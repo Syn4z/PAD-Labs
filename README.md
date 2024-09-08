@@ -89,8 +89,8 @@ TO DO add more details about API's and functionality with databases.
     }
 ```    
 
-### /api/auth
-- ### POST /api/auth/register
+### /api/users
+- ### POST /api/users/register
     - #### Request Body
     ```json
             {
@@ -117,7 +117,7 @@ TO DO add more details about API's and functionality with databases.
                 }
             ```    
 
-- ### POST /api/auth/login
+- ### POST /api/users/login
     - #### Request Body
         ```json
             {
@@ -142,7 +142,7 @@ TO DO add more details about API's and functionality with databases.
                 }
             ```    
 
-- ### POST /api/auth/logout
+- ### POST /api/users/logout
     - #### Request Body
         ```json
             {
@@ -165,6 +165,39 @@ TO DO add more details about API's and functionality with databases.
                     "details": "string"
                 }   
             ```    
+- ### PUT /api/users/{user_id}
+    - #### Headers
+            Authorization: Bearer \<token>
+    - #### Request Body
+        ```json
+            {
+                "username": "string",
+                "email": "string",
+                "password": "string"
+            }
+        ```    
+
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "Profile updated successfully"
+                }
+            ```    
+
+        - ##### 400 Bad Request
+            ```json
+                {
+                    "error": "string",
+                    "details": "string"
+                }   
+            ```    
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "User not found"
+                }   
+            ```                 
 
 ### api/games
 - ### GET /api/games
