@@ -71,186 +71,207 @@ TO DO add more details about API's and functionality with databases.
 ### GET /api/status
 #### Response
 ##### 200 OK
-
+```json
     {
-        "service": "Flask Backend",
+        "service": "string",
         "status": "OK",
-        "timestamp": "2024-09-08T12:00:00Z"
+        "timestamp": "timestamp"
     }
+```
 
 ##### 500 Internal Server Error
-
+```json
     {
-        "service": "Flask Backend",
+        "service": "string",
         "status": "ERROR",
-        "timestamp": "2024-09-08T12:00:00Z",
-        "details": "Database connection failed"
-    }
-
-### POST /api/auth/register
-#### Request Body
-
-    {
-        "username": "string",
-        "email": "string",
-        "password": "string"
-    }
-
-#### Response
-##### 200 OK
-
-    {
-        "message": "User registered successfully",
-        "userId": "string"
-    }
-
-##### 400 Bad Request
-
-    {
-        "error": "string",
+        "timestamp": "timestamp",
         "details": "string"
     }
+```    
 
-### POST /api/auth/login
-#### Request Body
-
-    {
-        "email": "string",
-        "password": "string"
-    }
-
-#### Response 
-##### 200 OK
-
-    {
-        "message": "Login successful",
-        "token": "string"
-    }
-
-##### 401 Unauthorized
-
-    {
-        "error": "Invalid credentials"
-    }
-
-### POST /api/auth/logout
-
-#### Request Body
-
-    {
-        "token": "string"
-    }
-
-#### Response
-##### 200 OK
-
-    {
-        "message": "Logout successful"
-    }
-
-##### 400 Bad Request
-
-    {
-        "error": "string",
-        "details": "string"
-    }   
-
-### GET /api/games
-
-#### Response
-##### 200 OK
-
-    {
-        "games": [
+### /api/auth
+- ### POST /api/auth/register
+    - #### Request Body
+    ```json
             {
-            "id": "string",
-            "title": "string",
-            "genre": "string",
-            "price": "number"
+                "username": "string",
+                "email": "string",
+                "password": "string"
             }
-        ]
-    }     
+    ```        
 
-### GET /api/games/{id}
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "User registered successfully",
+                    "userId": "int"
+                }
+            ```    
 
-#### Response
-##### 200 OK
+        - ##### 400 Bad Request
+            ```json
+                {
+                    "error": "string",
+                    "details": "string"
+                }
+            ```    
 
-    {
-        "id": "string",
-        "title": "string",
-        "genre": "string",
-        "price": "number",
-        "description": "string"
-    }
+- ### POST /api/auth/login
+    - #### Request Body
+        ```json
+            {
+                "email": "string",
+                "password": "string"
+            }
+        ```    
 
-##### 404 Not Found
+    - #### Response 
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "Login successful",
+                    "token": "string"
+                }
+            ```    
 
-    {
-        "error": "Game not found"
-    }    
+        - ##### 401 Unauthorized
+            ```json
+                {
+                    "error": "Invalid credentials"
+                }
+            ```    
 
-### POST /api/games
-#### Request Body
+- ### POST /api/auth/logout
+    - #### Request Body
+        ```json
+            {
+                "token": "string"
+            }
+        ```    
 
-    {
-        "title": "string",
-        "genre": "string",
-        "price": "number",
-        "description": "string"
-    }
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "Logout successful"
+                }
+            ```    
 
-#### Response
-##### 201 Created
+        - ##### 400 Bad Request
+            ```json
+                {
+                    "error": "string",
+                    "details": "string"
+                }   
+            ```    
 
-    {
-        "message": "Game added successfully",
-        "gameId": "string"
-    }
+### api/games
+- ### GET /api/games
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "games": [
+                        {
+                        "id": "int",
+                        "title": "string",
+                        "genre": "string",
+                        "price": "float"
+                        }
+                    ]
+                }  
+            ```       
 
-##### 400 Bad Request
+- ### GET /api/games/{id}
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "id": "id",
+                    "title": "string",
+                    "genre": "string",
+                    "price": "float",
+                    "description": "string"
+                }
+            ```    
 
-    {
-        "error": "string",
-        "details": "string"
-    }    
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "Game not found"
+                }
+            ```                
 
-### PUT /api/games/{id}
-#### Request Body
+- ### POST /api/games
+    - #### Request Body
+        ```json
+            {
+                "title": "string",
+                "genre": "string",
+                "price": "float",
+                "description": "string"
+            }
+        ```    
 
-    {
-        "title": "string",
-        "genre": "string",
-        "price": "number",
-        "description": "string"
-    }
+    - #### Response
+        - ##### 201 Created
+            ```json
+                {
+                    "message": "Game added successfully",
+                    "gameId": "int"
+                }
+            ```    
 
-#### Response
-##### 200 OK
+        - ##### 400 Bad Request
+            ```json
+                {
+                    "error": "string",
+                    "details": "string"
+                }    
+            ```    
 
-    {
-        "message": "Game updated successfully"
-    }
+- ### PUT /api/games/{id}
+    - #### Request Body
+        ```json
+            {
+                "title": "string",
+                "genre": "string",
+                "price": "float",
+                "description": "string"
+            }
+        ```    
 
-##### 404 Not Found
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "Game updated successfully"
+                }
+            ```    
 
-    {
-        "error": "Game not found"
-    }  
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "Game not found"
+                }  
+            ```    
 
-### DELETE /api/games/{id}
-#### Response
-##### 200 OK
+- ### DELETE /api/games/{id}
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "message": "Game deleted successfully"
+                }
+            ```    
 
-    {
-        "message": "Game deleted successfully"
-    }
-
-##### 404 Not Found
-
-    {
-        "error": "Game not found"
-    }    
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "Game not found"
+                }    
+            ```    
 
 ----
 
