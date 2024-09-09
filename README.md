@@ -68,7 +68,7 @@ A games distribution platform with games store and authentication features.
     - Microservices communicate via **_RESTful APIs_**, sending **_HTTP_** requests and receiving responses.
     - **_gRPC_** offers a more efficient binary protocol and is suitable for high-performance, low-latency communication between services.
 
-- #### Continuous
+- #### Asynchronous
     - **_WebSocket_** can be used to propagate events (like state changes or notifications) to clients in real-time. When a new game update or feature is released, the game store microservice could send a message to a WebSocket server. Connected clients receive the update instantly without polling the server.
 
 ----
