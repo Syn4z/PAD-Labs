@@ -35,62 +35,91 @@ A games distribution platform with games store and authentication features.
 ----
 
 ## Technology Stack and Communication Patterns
-### ✔ Programming Languages
-- Python
-- JavaScript
+### ✔ Tech Stack
+- #### Programming Languages
+    - Python
+    - JavaScript
 
-### ✔ Database
-- PostgreSQL
+- #### Database
+    - PostgreSQL
 
-### ✔ Frameworks
-- Flask
-- NestJS
+- #### Frameworks
+    - Flask
+    - NestJS
 
-### ✔ Environments
-- NodeJS
+- #### Environments
+    - NodeJS
 
-### ✔ Deployment
-- Docker
-- Docker compose
+- #### Deployment
+    - Docker
+    - Docker compose
 
-### ✔ Communication
-- HTTP/REST
-- gRPC
-- Postman
-- Swagger
+- #### Communication
+    - HTTP/REST
+    - gRPC
+    - Postman
+    - Swagger
 
-### ✔ Caching
-- Redis
+- #### Caching
+    - Redis
 
+### ✔ Communication Patterns
+- #### Synchronous Communication
+    - Microservices communicate via **_RESTful APIs_**, sending **_HTTP_** requests and receiving responses.
+    - **_gRPC_** offers a more efficient binary protocol and is suitable for high-performance, low-latency communication between services.
+
+- #### Continuous Communication
+    - **_WebSocket_** can be used to propagate events (like state changes or notifications) to clients in real-time. When a new game update or feature is released, the game store microservice could send a message to a WebSocket server. Connected clients receive the update instantly without polling the server.
+    
 ----
 
 ## Data Management
-Each microservice will have it's separate database in PostgreSQL.
-TO DO add more details about API's and functionality with databases.
+Each microservice will have it's separate database in PostgreSQL, resulting in each service having exclusive access to its data.
 
-### GET /api/status
-#### Response
-##### 200 OK
-```json
-    {
-        "service": "string",
-        "status": "OK",
-        "timestamp": "timestamp"
-    }
-```
+### ✔ Models
+- #### User
+    ```json
+        {
+            "userId": "int",
+            "username": "string",
+            "email": "string",
+            "password": "string"
+        }
+    ```
+- #### Game
+    ```json
+        {
+            "gameId": "int",
+            "title": "string",
+            "genre": "string",
+            "price": "float",
+            "description": "string"
+        }
+    ```
+### ✔ Endpoints
+- ### *GET /api/status*
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "service": "string",
+                    "status": "OK",
+                    "timestamp": "timestamp"
+                }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+                {
+                    "service": "string",
+                    "status": "ERROR",
+                    "timestamp": "timestamp",
+                    "details": "string"
+                }
+            ```    
 
-##### 500 Internal Server Error
-```json
-    {
-        "service": "string",
-        "status": "ERROR",
-        "timestamp": "timestamp",
-        "details": "string"
-    }
-```    
+----
 
-### /api/users
-- ### POST /api/users/register
+- ### *POST /api/users/register*
     - #### Request Body
     ```json
             {
@@ -105,10 +134,9 @@ TO DO add more details about API's and functionality with databases.
             ```json
                 {
                     "message": "User registered successfully",
-                    "userId": "int"
+                    "username": "string"
                 }
             ```    
-
         - ##### 400 Bad Request
             ```json
                 {
@@ -117,7 +145,7 @@ TO DO add more details about API's and functionality with databases.
                 }
             ```    
 
-- ### POST /api/users/login
+- ### *POST /api/users/login*
     - #### Request Body
         ```json
             {
@@ -134,7 +162,6 @@ TO DO add more details about API's and functionality with databases.
                     "token": "string"
                 }
             ```    
-
         - ##### 401 Unauthorized
             ```json
                 {
@@ -142,7 +169,7 @@ TO DO add more details about API's and functionality with databases.
                 }
             ```    
 
-- ### POST /api/users/logout
+- ### *POST /api/users/logout*
     - #### Request Body
         ```json
             {
@@ -157,7 +184,6 @@ TO DO add more details about API's and functionality with databases.
                     "message": "Logout successful"
                 }
             ```    
-
         - ##### 400 Bad Request
             ```json
                 {
@@ -165,9 +191,10 @@ TO DO add more details about API's and functionality with databases.
                     "details": "string"
                 }   
             ```    
-- ### PUT /api/users/{user_id}
+- ### *PUT /api/users/{user_id}*
     - #### Headers
             Authorization: Bearer \<token>
+
     - #### Request Body
         ```json
             {
@@ -184,7 +211,6 @@ TO DO add more details about API's and functionality with databases.
                     "message": "Profile updated successfully"
                 }
             ```    
-
         - ##### 400 Bad Request
             ```json
                 {
@@ -199,8 +225,9 @@ TO DO add more details about API's and functionality with databases.
                 }   
             ```                 
 
-### api/games
-- ### GET /api/games
+----
+
+- ### *GET /api/games*
     - #### Response
         - ##### 200 OK
             ```json
@@ -216,7 +243,7 @@ TO DO add more details about API's and functionality with databases.
                 }  
             ```       
 
-- ### GET /api/games/{id}
+- ### *GET /api/games/{id}*
     - #### Response
         - ##### 200 OK
             ```json
@@ -228,7 +255,6 @@ TO DO add more details about API's and functionality with databases.
                     "description": "string"
                 }
             ```    
-
         - ##### 404 Not Found
             ```json
                 {
@@ -236,7 +262,7 @@ TO DO add more details about API's and functionality with databases.
                 }
             ```                
 
-- ### POST /api/games
+- ### *POST /api/games*
     - #### Request Body
         ```json
             {
@@ -252,10 +278,9 @@ TO DO add more details about API's and functionality with databases.
             ```json
                 {
                     "message": "Game added successfully",
-                    "gameId": "int"
+                    "title": "string"
                 }
             ```    
-
         - ##### 400 Bad Request
             ```json
                 {
@@ -264,7 +289,7 @@ TO DO add more details about API's and functionality with databases.
                 }    
             ```    
 
-- ### PUT /api/games/{id}
+- ### *PUT /api/games/{id}*
     - #### Request Body
         ```json
             {
@@ -282,7 +307,6 @@ TO DO add more details about API's and functionality with databases.
                     "message": "Game updated successfully"
                 }
             ```    
-
         - ##### 404 Not Found
             ```json
                 {
@@ -290,7 +314,7 @@ TO DO add more details about API's and functionality with databases.
                 }  
             ```    
 
-- ### DELETE /api/games/{id}
+- ### *DELETE /api/games/{id}*
     - #### Response
         - ##### 200 OK
             ```json
@@ -298,7 +322,6 @@ TO DO add more details about API's and functionality with databases.
                     "message": "Game deleted successfully"
                 }
             ```    
-
         - ##### 404 Not Found
             ```json
                 {
@@ -309,14 +332,8 @@ TO DO add more details about API's and functionality with databases.
 ----
 
 ## Deployment and Scaling
-1. Create Dockerfile for Each Service (each microservice will have its own Dockerfile to define how it is built and run)
-2. Create a docker-compose.yml File (this file defines how the services are connected and configured)
-3. Configure Networking (using Docker compose to set up a default network for the services, allowing them to communicate using service names)
-4. Deploy the Microservices (building, starting and checking the logs)
-5. Scale the Microservices (modifying the docker-compose.yml to specify the number of replicas for each service)
-6. Update the Deploy (using Docker compose to scale the services to the specified number of replicas)
-
-The scaling method I will be using is horizontal scaling to make use of more service instances. Horizontal scaling involves adding more instances of a service to handle increased load. This is beneficial because it allows the system to handle more requests by distributing the load across multiple instances. Each instance runs independently, and a load balancer will distribute incoming requests to the available instances, ensuring efficient use of resources and improved performance.
+**_Docker_** will be used to have each service with it's database deployed in a container and using Docker compose to set up a default network for the services, allowing them to communicate using service names. Using Docker containers to have specific environments for the services. Docker will build, start and check the status of each microservice. This approach makes sure that the services can run on any machine and are compatible.
+The scaling method I will be using is **_horizontal scaling_** to make use of more service instances. Horizontal scaling involves adding more instances of a service to handle increased load. This is beneficial because it allows the system to handle more requests by distributing the load across multiple instances, ensuring efficient use of resources and improved performance.
 
 ## References
 - [System Architecture](https://medium.com/@beuttam/building-scalable-microservices-with-proxy-load-balancer-api-gateway-private-network-services-f25c73cc8e02)
