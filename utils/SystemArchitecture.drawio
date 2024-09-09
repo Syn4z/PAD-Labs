@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0" version="24.7.12">
   <diagram name="Page-1" id="uiNQMvACifZpJ-6OYbCf">
-    <mxGraphModel dx="2045" dy="1760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1669" dy="1553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -216,6 +216,11 @@
             <mxPoint x="-110.0344827586207" y="270" as="targetPoint" />
           </mxGeometry>
         </mxCell>
+        <mxCell id="1mGUqjX1SZVYjUJcthAb-54" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=100;exitDy=45;exitPerimeter=0;fontFamily=Helvetica;fontSize=12;fontColor=default;" edge="1" parent="1" source="1mGUqjX1SZVYjUJcthAb-44">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-50" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="1mGUqjX1SZVYjUJcthAb-44" value="Games store service" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
           <mxGeometry x="-170" y="170" width="100" height="70" as="geometry" />
         </mxCell>
@@ -264,6 +269,12 @@
               <mxPoint x="-130" y="140" />
               <mxPoint x="-130" y="150" />
             </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="1mGUqjX1SZVYjUJcthAb-55" value="" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;entryX=0;entryY=0;entryDx=100;entryDy=45;entryPerimeter=0;" edge="1" parent="1" target="1mGUqjX1SZVYjUJcthAb-44">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-50" y="215" as="sourcePoint" />
+            <mxPoint x="-80" y="180" as="targetPoint" />
           </mxGeometry>
         </mxCell>
       </root>
