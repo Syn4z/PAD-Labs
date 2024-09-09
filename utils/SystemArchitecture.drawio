@@ -277,6 +277,15 @@
             <mxPoint x="-80" y="180" as="targetPoint" />
           </mxGeometry>
         </mxCell>
+        <mxCell id="1mGUqjX1SZVYjUJcthAb-58" value="" style="endArrow=classic;html=1;rounded=0;fontFamily=Helvetica;fontSize=11;fontColor=default;exitX=0.427;exitY=1.002;exitDx=0;exitDy=0;exitPerimeter=0;dashed=1;strokeWidth=1;dashPattern=12 12;strokeColor=default;align=center;verticalAlign=middle;labelBackgroundColor=default;" edge="1" parent="1" source="1mGUqjX1SZVYjUJcthAb-44">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-240" y="170" as="sourcePoint" />
+            <mxPoint x="-300" y="260" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-127" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
