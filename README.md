@@ -64,13 +64,13 @@ A games distribution platform with games store and authentication features.
     - Redis
 
 ### ✔ Communication Patterns
-- #### Synchronous Communication
+- #### Synchronous
     - Microservices communicate via **_RESTful APIs_**, sending **_HTTP_** requests and receiving responses.
     - **_gRPC_** offers a more efficient binary protocol and is suitable for high-performance, low-latency communication between services.
 
-- #### Continuous Communication
+- #### Continuous
     - **_WebSocket_** can be used to propagate events (like state changes or notifications) to clients in real-time. When a new game update or feature is released, the game store microservice could send a message to a WebSocket server. Connected clients receive the update instantly without polling the server.
-    
+
 ----
 
 ## Data Management
@@ -234,10 +234,11 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 {
                     "games": [
                         {
-                        "id": "int",
+                        "gameId": "int",
                         "title": "string",
                         "genre": "string",
-                        "price": "float"
+                        "price": "float",
+                        "description": "string"
                         }
                     ]
                 }  
@@ -248,7 +249,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
         - ##### 200 OK
             ```json
                 {
-                    "id": "id",
+                    "gameId": "int",
                     "title": "string",
                     "genre": "string",
                     "price": "float",
@@ -333,6 +334,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
 
 ## Deployment and Scaling
 **_Docker_** will be used to have each service with it's database deployed in a container and using Docker compose to set up a default network for the services, allowing them to communicate using service names. Using Docker containers to have specific environments for the services. Docker will build, start and check the status of each microservice. This approach makes sure that the services can run on any machine and are compatible.
+
 The scaling method I will be using is **_horizontal scaling_** to make use of more service instances. Horizontal scaling involves adding more instances of a service to handle increased load. This is beneficial because it allows the system to handle more requests by distributing the load across multiple instances, ensuring efficient use of resources and improved performance.
 
 ## References
