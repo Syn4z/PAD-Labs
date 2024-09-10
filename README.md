@@ -332,6 +332,41 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
 
 ----
 
+- ### Subscription Messages
+    1. #### Subscribe to a Game
+    - #### Client to Server
+        ```json
+        {
+            "action": "subscribe",
+            "topic": "game_updates"
+        }
+        ```
+
+    - #### Server Response
+        ```json
+        {
+            "message": "Subscribed to game_updates"
+        }
+        ```
+    2. #### Unsubscribe from a Game
+
+    - #### Client to Server
+        ```json
+        {
+            "action": "unsubscribe",
+            "topic": "game_updates"
+        }
+        ```
+
+    - #### Server Response
+        ```json
+        {
+            "message": "Unsubscribed from game_updates"
+        }
+        ```
+
+----
+
 ## Deployment and Scaling
 **_Docker_** will be used to have each service with it's database deployed in a container and using Docker compose to set up a default network for the services, allowing them to communicate using service names. Using Docker containers to have specific environments for the services. Docker will build, start and check the status of each microservice. This approach makes sure that the services can run on any machine and are compatible.
 
