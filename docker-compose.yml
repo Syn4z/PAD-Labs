@@ -1,0 +1,40 @@
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - game-store-service
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "5001:5000"
+    depends_on:
+      - auth-db
+    env_file:
+      - ./auth-service/.env
+  auth-db:
+    build: ./auth-service/db
+    ports:
+      - "5432:5432"
+  game-store-service:
+    build: ./game-store-service
+    ports:
+      - "5002:5002"
+    depends_on:
+      - game-db
+  game-db:
+    build: ./game-store-service/db
+    ports:
+      - "5433:5432"
+
+  # redis:
+  #   image: redis
+  #   ports:
+  #     - "6379:6379"
+
+  # service-discovery:
+  #   image: consul
+  #   ports:
+  #     - "8500:8500"
