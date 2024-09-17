@@ -71,7 +71,7 @@ setup-auth:
 
 start-auth:
 	@echo "Starting Authentication Service"
-	cd $(AUTH_SERVICE_DIR) && $(PYTHON) src/main.py
+	cd $(AUTH_SERVICE_DIR) && $(PYTHON) src/app.py
 
 stop-auth:
 	@echo "Stopping Authentication Service"
@@ -89,7 +89,7 @@ setup-game-store:
 
 start-game-store:
 	@echo "Starting Game Store Service"
-	cd $(GAME_STORE_SERVICE_DIR) && $(PYTHON) src/main.py
+	cd $(GAME_STORE_SERVICE_DIR) && $(PYTHON) src/app.py
 
 stop-game-store:
 	$(DOCKER_COMPOSE) stop game-store-service

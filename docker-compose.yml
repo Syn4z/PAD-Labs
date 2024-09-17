@@ -1,11 +1,4 @@
 services:
-  gateway:
-    build: ./gateway
-    ports:
-      - "3000:3000"
-    depends_on:
-      - auth-service
-      - game-store-service
   auth-service:
     build: ./auth-service
     ports:
@@ -13,21 +6,32 @@ services:
     depends_on:
       - auth-db
     env_file:
-      - ./auth-service/.env
+      - ./auth-service/.env  
   auth-db:
-    build: ./auth-service/db
+    image: postgres:16
+    env_file:
+      - ./auth-service/.env
     ports:
       - "5432:5432"
-  game-store-service:
-    build: ./game-store-service
-    ports:
-      - "5002:5002"
-    depends_on:
-      - game-db
-  game-db:
-    build: ./game-store-service/db
-    ports:
-      - "5433:5432"
+    volumes:
+      - ./auth-service/src/db:/docker-entrypoint-initdb.d  
+  # gateway:
+  #   build: ./gateway
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - auth-service
+  #     - game-store-service
+  # game-store-service:
+  #   build: ./game-store-service
+  #   ports:
+  #     - "5002:5002"
+  #   depends_on:
+  #     - game-db
+  # game-db:
+  #   build: ./game-store-service/db
+  #   ports:
+  #     - "5433:5432"
 
   # redis:
   #   image: redis
