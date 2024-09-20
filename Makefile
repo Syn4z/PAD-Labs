@@ -19,6 +19,9 @@ start:
 stop:
 	$(DOCKER_COMPOSE) stop		
 
+restart-container:
+	$(DOCKER_COMPOSE) restart $(CONTAINER)
+
 build:
 	$(DOCKER_COMPOSE) build
 
