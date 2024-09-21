@@ -19,8 +19,11 @@ start:
 stop:
 	$(DOCKER_COMPOSE) stop		
 
-restart-container:
-	$(DOCKER_COMPOSE) restart $(CONTAINER)
+start-container:
+	$(DOCKER_COMPOSE) start $(CONTAINER)
+
+stop-container:
+	$(DOCKER_COMPOSE) stop $(CONTAINER)
 
 build:
 	$(DOCKER_COMPOSE) build

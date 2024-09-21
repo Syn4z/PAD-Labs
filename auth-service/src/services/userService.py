@@ -23,3 +23,12 @@ def verify_user(username: str, password: str):
     if user and check_password_hash(user.password, password):
         return user
     return None
+
+def update_user_by_id(user_id: int, username: str, email: str, password: str):
+    user = get_user_by_id(user_id)
+    if user:
+        user.username = username
+        user.email = email
+        user.password = generate_password_hash(password)
+        db.session.commit()
+    return user

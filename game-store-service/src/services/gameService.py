@@ -13,3 +13,14 @@ def get_games():
 
 def get_game_by_id(game_id: int):
     return db.session.query(Game).get(game_id)
+
+def update_game_by_id(game_id: int, title: str, genre: str, price: float, description: str, release_date: datetime):
+    game = get_game_by_id(game_id)
+    if game:
+        game.title = title
+        game.genre = genre
+        game.price = price
+        game.description = description
+        game.release_date = release_date
+        db.session.commit()
+    return game
