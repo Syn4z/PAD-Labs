@@ -7,6 +7,8 @@ GATEWAY_DIR := gateway
 # Docker commands
 .PHONY: up down build rebuild logs
 
+cleanup:
+	docker system prune -f
 up:
 	$(DOCKER_COMPOSE) up -d
 

@@ -7,6 +7,16 @@ from flask_limiter.util import get_remote_address
 games_bp = Blueprint('games', __name__)
 limiter = Limiter(key_func=get_remote_address)
 
+
+@games_bp.route('/status', methods=['GET'])
+@limiter.limit("5 per minute")
+def status():
+    try:
+        db.session.execute('SELECT 1')
+        return jsonify({'status': 'Game store service is running', 'database': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'status': 'Game store service is running', 'database': 'disconnected', 'error': str(e)}), 500
+
 @games_bp.route('/', methods=['GET'])
 @limiter.limit("5 per minute")
 def list_games():

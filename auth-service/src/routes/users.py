@@ -51,16 +51,34 @@ def get_user(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@users_bp.route('/', methods=['POST'])
+@users_bp.route('/register', methods=['POST'])
 @limiter.limit("5 per minute")
-def add_user():
+def register():
     try:
         data = request.get_json()
-        new_user = create_user(data)
-        return jsonify({'message': 'User created', 'user': new_user}), 201
+        new_user = create_user(data['username'], data['email'], data['password'])
+        return jsonify({'message': 'User registered', 'user': new_user.username}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@users_bp.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")
+def login():
+    try:
+        data = request.get_json()
+        user = verify_user(data['username'], data['password'])
+        if user:
+            return jsonify({
+                'message': 'Login successful',
+                'user': {
+                    'username': user.username,
+                    'email': user.email
+                }
+            })
+        return jsonify({'error': 'Invalid username or password'}), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 @users_bp.route('/<int:user_id>', methods=['PUT'])
 @limiter.limit("5 per minute")
 def update_user(user_id):
@@ -81,33 +99,5 @@ def delete_user(user_id):
             db.session.commit()
             return jsonify({'message': 'User deleted'})
         return jsonify({'error': 'User not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@users_bp.route('/register', methods=['POST'])
-@limiter.limit("5 per minute")
-def register():
-    try:
-        data = request.get_json()
-        new_user = create_user(data)
-        return jsonify({'message': 'User registered', 'user': new_user}), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@users_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
-def login():
-    try:
-        data = request.get_json()
-        user = verify_user(data['username'], data['password'])
-        if user:
-            return jsonify({
-                'message': 'Login successful',
-                'user': {
-                    'username': user.username,
-                    'email': user.email
-                }
-            })
-        return jsonify({'error': 'Invalid username or password'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
