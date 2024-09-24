@@ -12,9 +12,9 @@ export class GatewayService {
     return 'Gateway is running';
   }
 
-  redirectToAuthService(endpoint: string, method: string, data?: any): Observable<any> {
+  redirectToAuthService(endpoint: string, method: string, data?: any, headers?: any): Observable<any> {
     const url = `http://auth-service:5000/users/${endpoint}`;
-    return this.httpService.request({ url, method, data }).pipe(
+    return this.httpService.request({ url, method, data, headers }).pipe(
       map((response: AxiosResponse) => ({
         statusCode: response.status,
         statusMessage: response.statusText,
@@ -28,9 +28,9 @@ export class GatewayService {
     );
   }
 
-  redirectToGameStoreService(endpoint: string, method: string, data?: any): Observable<any> {
+  redirectToGameStoreService(endpoint: string, method: string, data?: any, headers?: any): Observable<any> {
     const url = `http://game-store-service:5000/games/${endpoint}`;
-    return this.httpService.request({ url, method, data }).pipe(
+    return this.httpService.request({ url, method, data, headers }).pipe(
       map((response: AxiosResponse) => ({
         statusCode: response.status,
         statusMessage: response.statusText,

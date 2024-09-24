@@ -4,6 +4,8 @@ from services.userService import *
 from models.database import db
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from utils.jwt_utils import generate_token, token_required
+from sqlalchemy.exc import IntegrityError
 
 users_bp = Blueprint('users', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -35,6 +37,7 @@ def list_users():
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @limiter.limit("5 per minute")
+@token_required
 def get_user(user_id):
     try:
         user = get_user_by_id(user_id)
@@ -58,6 +61,9 @@ def register():
         data = request.get_json()
         new_user = create_user(data['username'], data['email'], data['password'])
         return jsonify({'message': 'User registered', 'user': new_user.username}), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'User already exists'}), 409
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -68,8 +74,10 @@ def login():
         data = request.get_json()
         user = verify_user(data['username'], data['password'])
         if user:
+            token = generate_token(user.id)
             return jsonify({
                 'message': 'Login successful',
+                'token': token,
                 'user': {
                     'username': user.username,
                     'email': user.email
