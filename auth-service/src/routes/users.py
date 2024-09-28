@@ -5,7 +5,7 @@ from models.database import db
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from utils.jwt_utils import generate_token, token_required
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 users_bp = Blueprint('users', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -17,6 +17,8 @@ def status():
     try:
         db.session.execute('SELECT 1')
         return jsonify({'status': 'Auth service is running', 'database': 'connected'}), 200
+    except OperationalError as e:
+        return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500
     except Exception as e:
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': str(e)}), 500
 
