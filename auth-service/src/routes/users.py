@@ -30,7 +30,8 @@ def list_users():
             'username': user.username,
             'email': user.email,
             'created_at': user.created_at,
-            'updated_at': user.updated_at
+            'updated_at': user.updated_at,
+            'games': user.games
         } for user in users])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -48,7 +49,8 @@ def get_user(user_id):
                 'password': user.password,
                 'email': user.email,
                 'created_at': user.created_at,
-                'updated_at': user.updated_at
+                'updated_at': user.updated_at,
+                'games': user.games
             })
         return jsonify({'error': 'User not found'}), 404
     except Exception as e:
@@ -109,3 +111,22 @@ def delete_user(user_id):
         return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@users_bp.route('/add_game', methods=['POST'])
+@token_required
+def add_game():
+    try:
+        data = request.get_json()
+        username = data['username']
+        game_title = data['game_title']
+        if not username:
+            return jsonify({'error': 'Username is missing'}), 400
+        if not game_title:
+            return jsonify({'error': 'Game title is missing'}), 400
+        try:
+            user = add_game_to_user(username, game_title)
+            return jsonify({'message': 'Game added to profile', 'user': user.username}), 200
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 409
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400

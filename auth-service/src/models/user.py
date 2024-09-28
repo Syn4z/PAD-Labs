@@ -1,5 +1,6 @@
 from datetime import datetime
 from models.database import db
+from sqlalchemy.dialects.postgresql import ARRAY
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -8,8 +9,9 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    games = db.Column(ARRAY(db.String))
 
     def __init__(self, username, email, password):
         self.username = username
         self.email = email
-        self.password = password   
+        self.password = password  

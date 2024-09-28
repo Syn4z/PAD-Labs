@@ -1,6 +1,7 @@
 from models.user import User
 from models.database import db
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.orm.attributes import flag_modified
 
 def create_user(username: str, email: str, password: str):
     hashed_password = generate_password_hash(password)
@@ -31,4 +32,17 @@ def update_user_by_id(user_id: int, username: str, email: str, password: str):
         user.email = email
         user.password = generate_password_hash(password)
         db.session.commit()
+    return user
+
+def add_game_to_user(username, game_title):
+    user = get_user_by_username(username)
+    if user:
+        if user.games is None:
+            user.games = []
+        if game_title in user.games:
+            raise ValueError(f"Game '{game_title}' already exists in user '{username}' profile")
+        else:
+            user.games.append(game_title)
+            flag_modified(user, 'games')
+            db.session.commit()
     return user

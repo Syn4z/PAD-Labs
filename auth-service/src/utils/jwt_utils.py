@@ -9,7 +9,7 @@ SECRET_KEY = getenv('JWT_SECRET_KEY')
 def generate_token(user_id: int) -> str:
     payload = {
         'user_id': user_id,
-        'exp': datetime.utcnow() + timedelta(minutes=1)
+        'exp': datetime.utcnow() + timedelta(minutes=5)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
@@ -25,13 +25,23 @@ def verify_token(token: str) -> dict:
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Token is missing'}), 403
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': 'Authorization header is missing'}), 403
+        
+        parts = auth_header.split()
+        if parts[0].lower() != 'bearer':
+            return jsonify({'error': 'Authorization header must start with Bearer'}), 403
+        elif len(parts) == 1:
+            return jsonify({'error': 'Token not found'}), 403
+        elif len(parts) > 2:
+            return jsonify({'error': 'Authorization header must be Bearer token'}), 403
+
+        token = parts[1]
         try:
             payload = verify_token(token)
             request.user_id = payload['user_id']
         except Exception as e:
             return jsonify({'error': str(e)}), 403
         return f(*args, **kwargs)
-    return decorated    
+    return decorated
