@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
-from services.gameService import *
-from models.database import db
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import requests
 from sqlalchemy.exc import OperationalError
+from services.gameService import *
+from models.database import db
+from __main__ import redis_client
+import requests
+import json
 
 games_bp = Blueprint('games', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -23,29 +25,37 @@ def status():
 @games_bp.route('/', methods=['GET'])
 @limiter.limit("5 per minute")
 def list_games():
+    cached_games = redis_client.get('games_list')
+    if cached_games:
+        return jsonify(json.loads(cached_games))
     games = get_games()
-    return jsonify([{
+    response = [{
         'id': game.id,
         'title': game.title,
         'genre': game.genre,
         'price': game.price,
-        'description': game.description,
-        'release_date': game.release_date
-    } for game in games])
+        'description': game.description
+    } for game in games]
+    redis_client.set('games_list', json.dumps(response), ex=3600)
+    return jsonify(response)
 
 @games_bp.route('/<int:game_id>', methods=['GET'])
 @limiter.limit("5 per minute")
 def get_game(game_id):
+    cached_game = redis_client.get(f'game_{game_id}')
+    if cached_game:
+        return jsonify(json.loads(cached_game))
     game = get_game_by_id(game_id)
     if game:
-        return jsonify({
+        response = {
             'id': game.id,
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
-            'description': game.description,
-            'release_date': game.release_date
-        })
+            'description': game.description
+        }
+        redis_client.set(f'game_{game_id}', json.dumps(response), ex=3600)
+        return jsonify(response)
     return jsonify({'error': 'Game not found'}), 404
 
 @games_bp.route('/', methods=['POST'])
@@ -54,6 +64,7 @@ def add_game():
     try:
         data = request.get_json()
         game = create_game(data['title'], data['genre'], data['price'], data['description'])
+        redis_client.delete('games_list')
         return jsonify({
             'title': game.title,
             'genre': game.genre,
@@ -75,6 +86,8 @@ def update_game(game_id):
         game.price = data['price']
         game.description = data['description']
         db.session.commit()
+        redis_client.delete(f'game_{game_id}')
+        redis_client.delete('games_list')
         return jsonify({
             'title': game.title,
             'genre': game.genre,
@@ -90,6 +103,8 @@ def delete_game(game_id):
     if game:
         db.session.delete(game)
         db.session.commit()
+        redis_client.delete(f'game_{game_id}')
+        redis_client.delete('games_list')
         return jsonify({'message': 'Game deleted'})
     return jsonify({'error': 'Game not found'}), 404    
 

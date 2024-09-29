@@ -1,11 +1,11 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify
-from services.userService import *
-from models.database import db
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from utils.jwt_utils import generate_token, token_required
 from sqlalchemy.exc import IntegrityError, OperationalError
+from services.userService import *
+from models.database import db
+from utils.jwt_utils import generate_token, token_required
 
 users_bp = Blueprint('users', __name__)
 limiter = Limiter(key_func=get_remote_address)
