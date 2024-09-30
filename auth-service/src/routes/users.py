@@ -1,4 +1,4 @@
-from functools import wraps
+from time import sleep
 from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -75,6 +75,7 @@ def register():
 @limiter.limit("5 per minute")
 def login():
     try:
+        sleep(6)
         data = request.get_json()
         user = verify_user(data['username'], data['password'])
         if user:
