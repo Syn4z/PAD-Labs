@@ -4,7 +4,7 @@ from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import OperationalError
 from services.gameService import *
 from models.database import db
-from __main__ import redis_client
+from __main__ import redis_client, socketio
 import requests
 import json
 
@@ -65,6 +65,14 @@ def add_game():
         data = request.get_json()
         game = create_game(data['title'], data['genre'], data['price'], data['description'])
         redis_client.delete('games_list')
+        socketio.emit('game_update', {'action': 'add', 'game': {
+            'id': game.id,
+            'title': game.title,
+            'genre': game.genre,
+            'price': game.price,
+            'description': game.description,
+            'release_date': game.release_date
+        }})
         return jsonify({
             'title': game.title,
             'genre': game.genre,
@@ -88,6 +96,13 @@ def update_game(game_id):
         db.session.commit()
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
+        socketio.emit('game_update', {'action': 'update', 'game': {
+            'id': game.id,
+            'title': game.title,
+            'genre': game.genre,
+            'price': game.price,
+            'description': game.description
+        }})
         return jsonify({
             'title': game.title,
             'genre': game.genre,
@@ -105,12 +120,15 @@ def delete_game(game_id):
         db.session.commit()
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
+        socketio.emit('game_update', {'action': 'delete', 'game_id': game_id})
         return jsonify({'message': 'Game deleted'})
-    return jsonify({'error': 'Game not found'}), 404    
+    return jsonify({'error': 'Game not found'}), 404
 
-@games_bp.route('/buy/<int:game_id>/<string:username>', methods=['POST'])
+@games_bp.route('/buy/<int:game_id>', methods=['POST'])
 @limiter.limit("5 per minute")
-def buy_game(game_id, username):
+def buy_game(game_id):
+    data = request.get_json()
+    username = data['username']
     try:
         token = request.headers.get('Authorization')
         if not token:

@@ -75,7 +75,6 @@ def register():
 @limiter.limit("5 per minute")
 def login():
     try:
-        sleep(6)
         data = request.get_json()
         user = verify_user(data['username'], data['password'])
         if user:
