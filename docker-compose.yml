@@ -10,7 +10,7 @@ services:
   auth-service:
     build: ./auth-service
     ports:
-      - "5001:5000"
+      - "5000:5000"
     depends_on:
       - auth-db
     env_file:
@@ -27,7 +27,7 @@ services:
   game-store-service:
     build: ./game-store-service
     ports:
-      - "5002:5000"
+      - "5001:5001"
     depends_on:
       - game-db
       - redis

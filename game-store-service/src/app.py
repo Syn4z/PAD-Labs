@@ -17,7 +17,6 @@ REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-socketio = SocketIO()
 
 def create_app():
     app = Flask(__name__)
@@ -29,12 +28,13 @@ def create_app():
         default_limits=["5 per minute"]
     )
     limiter.init_app(app)
-    socketio.init_app(app)
     return app
 
 if __name__ == '__main__':
     app = create_app()
+    socketio = SocketIO(app)
     redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
     from routes.games import games_bp
+    from routes.websocket import socketio
     app.register_blueprint(games_bp, url_prefix='/games')
-    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)

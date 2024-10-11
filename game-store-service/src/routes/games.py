@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, IntegrityError
 from services.gameService import *
 from models.database import db
 from __main__ import redis_client, socketio
@@ -71,17 +71,20 @@ def add_game():
             'genre': game.genre,
             'price': game.price,
             'description': game.description,
-            'release_date': game.release_date
+            'release_date': game.release_date.strftime('%Y-%m-%d')
         }})
         return jsonify({
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
             'description': game.description,
-            'release_date': game.release_date
+            'release_date': game.release_date.strftime('%Y-%m-%d')
         }), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Game already exists'}), 409
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
 
 @games_bp.route('/<int:game_id>', methods=['PUT'])
 @limiter.limit("5 per minute")
@@ -89,14 +92,22 @@ def update_game(game_id):
     game = get_game_by_id(game_id)
     if game:
         data = request.get_json()
-        game.title = data['title']
+        new_title = data['title']
+        existing_game = get_game_by_title(new_title)
+        if existing_game and existing_game.id != game_id:
+            return jsonify({'error': 'A game with this title already exists'}), 409
+        game.title = new_title
         game.genre = data['genre']
         game.price = data['price']
         game.description = data['description']
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({'error': 'A game with this title already exists'}), 409
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
-        socketio.emit('game_update', {'action': 'update', 'game': {
+        socketio.emit(f'game_update_{game_id}', {'action': 'update', 'game': {
             'id': game.id,
             'title': game.title,
             'genre': game.genre,
@@ -120,21 +131,23 @@ def delete_game(game_id):
         db.session.commit()
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
-        socketio.emit('game_update', {'action': 'delete', 'game_id': game_id})
+        socketio.emit(f'game_update_{game_id}', {'action': 'delete', 'game_id': game.title})
         return jsonify({'message': 'Game deleted'})
-    return jsonify({'error': 'Game not found'}), 404
+    return jsonify({'error': 'Game not found'}), 404    
 
-@games_bp.route('/buy/<int:game_id>', methods=['POST'])
+@games_bp.route('/buy', methods=['POST'])
 @limiter.limit("5 per minute")
-def buy_game(game_id):
+def buy_game():
     data = request.get_json()
     username = data['username']
+    game_name = data['game_name']
     try:
+        print(request.headers)
         token = request.headers.get('Authorization')
         if not token:
             return jsonify({'error': 'Authorization token is missing'}), 401
 
-        game = get_game_by_id(game_id)
+        game = get_game_by_title(game_name)
         if not game:
             return jsonify({'error': 'Game not found'}), 404
 
@@ -148,4 +161,4 @@ def buy_game(game_id):
 
         return jsonify({'message': 'Game added to user profile'}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 400   
