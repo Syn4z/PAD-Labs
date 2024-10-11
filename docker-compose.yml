@@ -19,6 +19,7 @@ services:
       - ./auth-service/.env  
     deploy:
       replicas: 3
+      
   auth-db:
     image: postgres:16
     env_file:
@@ -36,7 +37,8 @@ services:
     env_file:
       - ./game-store-service/.env    
     deploy:
-      replicas: 3  
+      replicas: 3 
+
   game-db:
     image: postgres:16
     env_file:
