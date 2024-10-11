@@ -22,6 +22,8 @@ def create_app():
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_POOL_SIZE'] = 20
+    app.config['SQLALCHEMY_MAX_OVERFLOW'] = 10
     db.init_app(app)
     limiter = Limiter(
         key_func=get_remote_address,
@@ -37,4 +39,4 @@ if __name__ == '__main__':
     from routes.games import games_bp
     from routes.websocket import socketio
     app.register_blueprint(games_bp, url_prefix='/games')
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=os.getenv('SERVICE_PORT'), allow_unsafe_werkzeug=True)

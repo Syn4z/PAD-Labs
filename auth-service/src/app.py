@@ -30,4 +30,4 @@ if __name__ == '__main__':
     app = create_app()
     from routes.users import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', debug=True, port=os.getenv('SERVICE_PORT'))

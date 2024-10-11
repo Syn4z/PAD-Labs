@@ -1,11 +1,14 @@
 {
-    "service": {
-      "name": "consul",
-      "tags": ["primary"],
-      "port": 8500,
-      "check": {
-        "http": "http://localhost:8500/v1/agent/self",
-        "interval": "10s"
-      }
+  "service": {
+    "name": "consul",
+    "port": 8500,
+    "tags": ["consul"],
+    "check": {
+      "id": "consul-service-discovery",
+      "name": "Consul Health Status",
+      "http": "http://localhost:8500/v1/status/leader",
+      "method": "GET",
+      "interval": "10s"
     }
   }
+}
