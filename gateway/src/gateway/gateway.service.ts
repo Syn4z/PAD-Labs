@@ -29,7 +29,7 @@ export class GatewayService {
   }
 
   redirectToGameStoreService(endpoint: string, method: string, data?: any, headers?: any): Observable<any> {
-    const url = `http://game-store-service:5000/games/${endpoint}`;
+    const url = `http://game-store-service:5001/games/${endpoint}`;
     return this.httpService.request({ url, method, data, headers }).pipe(
       map((response: AxiosResponse) => ({
         statusCode: response.status,
@@ -37,9 +37,9 @@ export class GatewayService {
         data: response.data,
       })),
       catchError(err => {
-        const errorMessage = err.response?.data?.error || 'An error occurred';
+        const errorMessage = err.response?.data || 'An error occurred';
         const statusCode = err.response?.status || 500;
-        return throwError(() => new HttpException({ error: errorMessage }, statusCode));
+        return throwError(() => new HttpException({ errorMessage }, statusCode));
       })
     );
   }

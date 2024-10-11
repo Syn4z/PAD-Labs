@@ -15,6 +15,9 @@ def get_games():
 def get_game_by_id(game_id: int):
     return db.session.query(Game).get(game_id)
 
+def get_game_by_title(game_title: str):
+    return db.session.query(Game).filter_by(title=game_title).first()
+
 def update_game_by_id(game_id: int, title: str, genre: str, price: float, description: str):
     game = get_game_by_id(game_id)
     if game:
