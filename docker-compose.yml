@@ -6,6 +6,10 @@ services:
     depends_on:
       - auth-service
       - game-store-service
+      - consul
+    environment:
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
       
   auth-service:
     build: ./auth-service
@@ -14,7 +18,7 @@ services:
     env_file:
       - ./auth-service/.env  
     deploy:
-      replicas: 2
+      replicas: 3
   auth-db:
     image: postgres:16
     env_file:
@@ -32,7 +36,7 @@ services:
     env_file:
       - ./game-store-service/.env    
     deploy:
-      replicas: 2  
+      replicas: 3  
   game-db:
     image: postgres:16
     env_file:

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import OperationalError, IntegrityError
+from sqlalchemy.sql import text
 from services.gameService import *
 from models.database import db
 from __main__ import redis_client, socketio
@@ -15,7 +16,7 @@ limiter = Limiter(key_func=get_remote_address)
 @games_bp.route('/status', methods=['GET'])
 def status():
     try:
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         return jsonify({'status': 'Game store service is running', 'database': 'connected'}), 200
     except OperationalError as e:
         return jsonify({'status': 'Game store service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500

@@ -5,4 +5,5 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 COPY src/ src/
 COPY .env .env
-CMD ["sh", "-c", "python ./src/app.py & python ./src/consul-register.py"]
+EXPOSE 5000
+CMD ["sh", "-c", "python ./src/consul-register.py && python ./src/app.py"]
