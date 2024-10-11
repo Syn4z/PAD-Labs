@@ -1,0 +1,11 @@
+{
+    "service": {
+      "name": "game-store-service",
+      "tags": ["game"],
+      "port": 5001,
+      "check": {
+        "http": "http://game-store-service:5001/status",
+        "interval": "10s"
+      }
+    }
+  }

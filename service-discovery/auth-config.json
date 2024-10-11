@@ -1,0 +1,14 @@
+{
+    "service": {
+      "name": "auth-service",
+      "tags": ["auth"],
+      "port": 5000,
+      "check": {
+        "id": "auth-service",
+        "name": "Auth Service Status",
+        "http": "http://auth-service:5000/status",
+        "method": "GET",
+        "interval": "10s"
+      }
+    }
+  }

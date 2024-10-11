@@ -46,3 +46,10 @@ services:
     image: 'redis:latest'
     ports:
       - '6379:6379'  
+
+  consul:
+    build:
+      context: ./service-discovery
+    ports:
+      - "8500:8500"
+    command: "agent -dev -client=0.0.0.0"    

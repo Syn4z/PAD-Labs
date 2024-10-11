@@ -1,0 +1,11 @@
+{
+    "service": {
+      "name": "gateway",
+      "tags": ["api"],
+      "port": 3000,
+      "check": {
+        "http": "http://gateway:3000/",
+        "interval": "10s"
+      }
+    }
+  }
