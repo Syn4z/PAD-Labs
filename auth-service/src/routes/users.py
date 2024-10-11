@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.sql import text
 from services.userService import *
 from models.database import db
 from utils.jwt_utils import generate_token, token_required
@@ -12,10 +13,9 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @users_bp.route('/status', methods=['GET'])
-@limiter.limit("5 per minute")
 def status():
     try:
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         return jsonify({'status': 'Auth service is running', 'database': 'connected'}), 200
     except OperationalError as e:
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500

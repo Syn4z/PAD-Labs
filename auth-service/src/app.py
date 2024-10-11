@@ -1,6 +1,4 @@
 from flask import Flask
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from models.database import db
 from dotenv import load_dotenv
 import os
@@ -18,11 +16,6 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
-    limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=["5 per minute"]
-    )
-    limiter.init_app(app)
     return app
 
 
@@ -30,4 +23,4 @@ if __name__ == '__main__':
     app = create_app()
     from routes.users import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', debug=True, port=os.getenv('SERVICE_PORT'))
