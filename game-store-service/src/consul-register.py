@@ -5,7 +5,7 @@ import socket
 def register_service():
   consul_host = os.getenv('CONSUL_HOST')
   consul_port = os.getenv('CONSUL_PORT')
-  service_name = 'Game Store Service'
+  service_name = 'game-store-service'
   service_port = int(os.getenv('SERVICE_PORT'))
   service_prefix = os.getenv('SERVICE_PREFIX')
   service_id = f"{service_name}-{socket.gethostbyname(socket.gethostname())}"

@@ -1,70 +1,35 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Headers } from '@nestjs/common';
-import { GatewayService } from './gateway.service';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Controller, Get, Param, Res } from '@nestjs/common';
+import { ConsulService } from '../load-balancer/consul.service';
+import { RoundRobinService } from '../load-balancer/load-balancer.service';
+import { Response } from 'express';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('gateway')
 export class GatewayController {
-  constructor(private readonly gatewayService: GatewayService) {}
-
-  @Get()
-  getStatus(): string {
-    return this.gatewayService.getStatus();
-  }
-
-  @Get('auth/:endpoint')
-  getFromAuthService(@Param('endpoint') endpoint: string, @Headers() headers: any): Observable<any> {
-    return this.gatewayService.redirectToAuthService(endpoint, 'GET', null, headers).pipe(
-      map(response => response.data)
-    );
-  }
-
-  @Post('auth/:endpoint')
-  postToAuthService(@Param('endpoint') endpoint: string, @Body() data: any): Observable<any> {
-    return this.gatewayService.redirectToAuthService(endpoint, 'POST', data).pipe(
-      map(response => response.data)
-    );
-  }
-
-  @Put('auth/:endpoint')
-  putToAuthService(@Param('endpoint') endpoint: string, @Body() data: any): Observable<any> {
-    return this.gatewayService.redirectToAuthService(endpoint, 'PUT', data).pipe(
-      map(response => response.data)
-    );
-  }
-
-  @Delete('auth/:endpoint')
-  deleteFromAuthService(@Param('endpoint') endpoint: string): Observable<any> {
-    return this.gatewayService.redirectToAuthService(endpoint, 'DELETE').pipe(
-      map(response => response.data)
-    );
-  }
+  constructor(
+    private readonly consulService: ConsulService,
+    private readonly roundRobinService: RoundRobinService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get('game-store/:endpoint')
-  getFromGameStoreService(@Param('endpoint') endpoint: string): Observable<any> {
-    return this.gatewayService.redirectToGameStoreService(endpoint, 'GET').pipe(
-      map(response => response.data)
-    );
-  }
+  async forwardRequest(
+    @Param('endpoint') endpoint: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const serviceName = this.configService.get<string>('SERVICE_NAME');
+      const servicePrefix = this.configService.get<string>('SERVICE_PREFIX');
+      const instances = await this.consulService.getServiceInstances(serviceName);
+      const instance = this.roundRobinService.getNextInstance(instances);
+      const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
+      console.log(`Forwarding request to ${targetUrl}`);
 
-  @Post('game-store/:endpoint')
-  postToGameStoreService(@Param('endpoint') endpoint: string, @Body() data: any): Observable<any> {
-    return this.gatewayService.redirectToGameStoreService(endpoint, 'POST', data).pipe(
-      map(response => response.data)
-    );
-  }
-
-  @Put('game-store/:endpoint')
-  putToGameStoreService(@Param('endpoint') endpoint: string, @Body() data: any): Observable<any> {
-    return this.gatewayService.redirectToGameStoreService(endpoint, 'PUT', data).pipe(
-      map(response => response.data)
-    );
-  }
-
-  @Delete('game-store/:endpoint')
-  deleteFromGameStoreService(@Param('endpoint') endpoint: string): Observable<any> {
-    return this.gatewayService.redirectToGameStoreService(endpoint, 'DELETE').pipe(
-      map(response => response.data)
-    );
+      const result = await axios.get(targetUrl);
+      res.status(result.status).send(result.data);
+    } catch (err) {
+      res.status(500).send('Error forwarding request: ' + err.message);
+    }
   }
 }
