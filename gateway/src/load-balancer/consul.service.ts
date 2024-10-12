@@ -25,12 +25,11 @@ export interface ConsulServiceInstance {
       try {
         const services = await this.consul.agent.service.list() as Record<string, ConsulServiceInstance>;
         const instances = Object.values(services)
-            .filter(service => {
-                const match = service.Service === serviceName;
-                return match;
-            })
-            .map(service => `${service.Address}:${service.Port}`);
-            
+        .filter(service => {
+            const match = service.Service === serviceName;
+            return match;
+        })
+        .map(service => `${service.Address}:${service.Port}`);
         return instances;
       } catch (err) {
         throw new Error('Error retrieving services from Consul: ' + err.message);
