@@ -1,4 +1,3 @@
-// src/gateway/gateway.module.ts
 import { Module } from '@nestjs/common';
 import { GatewayController } from './gateway.controller';
 import { ConsulModule } from '../load-balancer/consul.module';

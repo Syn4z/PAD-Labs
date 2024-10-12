@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RoundRobinService } from './load-balancer.service';
+import { RoundRobinService } from './round-robin-balancer.service';
 
 @Module({
   providers: [RoundRobinService],
