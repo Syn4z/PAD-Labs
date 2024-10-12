@@ -1,15 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { CircuitBreaker } from '../middleware/circuit-breaker.middleware';
+import axios from 'axios';
 
-@Injectable()
-export class RoundRobinService {
-  private index = 0;
+export abstract class BaseLoadBalancerService {
+  protected circuitBreaker: CircuitBreaker;
 
-  getNextInstance(instances: string[]): string {
-    if (instances.length === 0) {
-      throw new Error('No available service instances');
+  constructor(failureThreshold: number, successThreshold: number, timeout: number) {
+    this.circuitBreaker = new CircuitBreaker(failureThreshold, successThreshold, timeout);
+  }
+
+  protected async callService(instance: string, servicePrefix: string): Promise<any> {
+    try {
+      const response = await axios.get(`http://${instance}/${servicePrefix}/status`);
+      return response.data;
+    } catch (error) {
+      throw new Error('Service failure: ' + error.message);
     }
-    const instance = instances[this.index];
-    this.index = (this.index + 1) % instances.length;
-    return instance;
   }
 }
