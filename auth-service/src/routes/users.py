@@ -1,3 +1,4 @@
+from random import randrange
 from time import sleep
 from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
@@ -7,6 +8,7 @@ from sqlalchemy.sql import text
 from services.userService import *
 from models.database import db
 from utils.jwt_utils import generate_token, token_required
+import psutil
 
 users_bp = Blueprint('users', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -21,6 +23,14 @@ def status():
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500
     except Exception as e:
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': str(e)}), 500
+
+@users_bp.route('/load', methods=['GET'])
+def load():
+    try:
+        cpu_usage = psutil.cpu_percent(interval=1) * randrange(2, 20)
+        return jsonify({'cpu_usage': cpu_usage}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/', methods=['GET'])
 @limiter.limit("5 per minute")

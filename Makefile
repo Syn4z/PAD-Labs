@@ -16,38 +16,38 @@ else
 	@powershell -Command "Get-Content Makefile | ForEach-Object { if ($$_ -match '^#') { $$_ -replace '^#', '' } elseif ($$_ -match '^[a-zA-Z_-]+:') { $$_ -replace ':', '' } }"
 endif
 
-cleanup:		Cleanup unused Docker data
+cleanup:		# Cleanup unused Docker data
 	docker system prune -f
 
-up:        Start the services in the background using docker-compose
+up:        # Start the services in the background using docker-compose
 	$(DOCKER_COMPOSE) up -d
 
-down:		Stop and remove the containers
+down:		# Stop and remove the containers
 	$(DOCKER_COMPOSE) down
 
-start:        Start existing containers without rebuilding
+start:        # Start existing containers without rebuilding
 	$(DOCKER_COMPOSE) start
 
-stop:		Stop running containers
+stop:		# Stop running containers
 	$(DOCKER_COMPOSE) stop		
 
-start-container:		Start a specific container (CONTAINER=<name>)
+start-container:		# Start a specific container (CONTAINER=<name>)
 	$(DOCKER_COMPOSE) start $(CONTAINER)
 
-stop-container:        Stop a specific container (CONTAINER=<name>)
+stop-container:        # Stop a specific container (CONTAINER=<name>)
 	$(DOCKER_COMPOSE) stop $(CONTAINER)
 
-build:        Build the services
+build:        # Build the services
 	$(DOCKER_COMPOSE) build
 
-rebuild:	    Rebuild the services without using the cache
+rebuild:	    # Rebuild the services without using the cache
 	$(DOCKER_COMPOSE) build --no-cache
 
-logs:        Tail the logs of the services
+logs:        # Tail the logs of the services
 	$(DOCKER_COMPOSE) logs -f
 
-clean:        Clean up containers, volumes, and networks
+clean:        # Clean up containers, volumes, and networks
 	$(DOCKER_COMPOSE) down --volumes --remove-orphans
 
-test-auth-service:        Run unit tests for auth-service
+test-auth-service:        # Run unit tests for auth-service
 	@cd $(AUTH_SERVICE_DIR)/src && python -m unittest discover -s test -p "unitTests.py"

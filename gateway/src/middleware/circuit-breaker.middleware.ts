@@ -1,7 +1,7 @@
 export class CircuitBreaker {
     private failureCount = 0;
     private successCount = 0;
-    private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+    public state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
     private readonly failureThreshold: number;
     private readonly successThreshold: number;
     private readonly timeout: number;
@@ -33,7 +33,7 @@ export class CircuitBreaker {
           lastError = error;
           this.fail();
           if (attempt < 2) {
-            console.log(`Retrying service call, attempt ${attempt + 2}`);
+            console.log(`Retrying service call, attempt ${attempt + 2}/3`);
           }
         }
       }
@@ -53,7 +53,7 @@ export class CircuitBreaker {
       }
     }
   
-    private fail() {
+    protected fail() {
       this.failureCount++;
       if (this.failureCount >= this.failureThreshold) {
         this.state = 'OPEN';

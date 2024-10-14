@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Res } from '@nestjs/common';
 import { ConsulService } from '../load-balancer/consul.service';
 import { RoundRobinService } from '../load-balancer/round-robin-balancer.service';
+import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.service';
 import { Response } from 'express';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
@@ -11,39 +12,63 @@ export class GatewayController {
   constructor(
     private readonly consulService: ConsulService,
     private readonly roundRobinService: RoundRobinService,
+    private readonly serviceLoadBalancer: ServiceLoadBalancer,
     private readonly configService: ConfigService,
   ) {
     this.startTime = new Date();
   }
 
   @Get('game-store/:endpoint')
-  async forwardGetRequest(@Param('endpoint') endpoint: string) {
-    return this.forwardRequest('GET', endpoint);
+  async forwardGetRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardGameRequest('GET', endpoint, res);
   }
 
   @Post('game-store/:endpoint')
-  async forwardPostRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
-    return this.forwardRequest('POST', endpoint, body);
+  async forwardPostRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
+    return this.forwardGameRequest('POST', endpoint, res, body);
   }
 
   @Put('game-store/:endpoint')
-  async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
-    return this.forwardRequest('PUT', endpoint, body);
+  async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
+    return this.forwardGameRequest('PUT', endpoint, res, body);
   }
 
   @Delete('game-store/:endpoint')
-  async forwardDeleteRequest(@Param('endpoint') endpoint: string) {
-    return this.forwardRequest('DELETE', endpoint);
+  async forwardDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardGameRequest('DELETE', endpoint, res);
   }
 
-  private async forwardRequest(method: string, endpoint: string, data?: any) {
+  @Get('auth/:endpoint')
+  async forwardAuthGetRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardAuthRequest('GET', endpoint, res);
+  }
+
+  @Post('auth/:endpoint')
+  async forwardAuthPostRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
+    return this.forwardAuthRequest('POST', endpoint, res, body);
+  }
+
+  @Put('auth/:endpoint')
+  async forwardAuthPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
+    return this.forwardAuthRequest('PUT', endpoint, res, body);
+  }
+
+  @Delete('auth/:endpoint')
+  async forwardAuthDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardAuthRequest('DELETE', endpoint, res);
+  }
+
+  private async forwardGameRequest(method: string, endpoint: string, res: Response, data?: any) {
     try {
-      const serviceName = this.configService.get<string>('SERVICE_NAME');
-      const servicePrefix = this.configService.get<string>('SERVICE_PREFIX');
+      const serviceName = this.configService.get<string>('GAME_SERVICE_NAME');
+      const servicePrefix = this.configService.get<string>('GAME_SERVICE_PREFIX');
       const instances = await this.consulService.getServiceInstances(serviceName);
       const instance = await this.roundRobinService.getNextInstance(instances, servicePrefix);
+      if (this.roundRobinService.circuitBreaker.state === 'OPEN') {
+        return res.status(503).json({ message: 'Circuit breaker is open' });
+      }
+  
       const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
-
       let result;
       switch (method) {
         case 'GET':
@@ -59,11 +84,53 @@ export class GatewayController {
           result = await axios.delete(targetUrl);
           break;
         default:
-          throw new Error('Unsupported method');
+          return res.status(400).json({ message: 'Unsupported method' });
       }
-      return result.data;
+      return res.status(result.status).json(result.data);
     } catch (err) {
-      throw new Error('Error forwarding request: ' + err.message);
+      if (err.response) {
+        return res.status(err.response.status).json({ message: err.response.statusText, data: err.response.data });
+      } else {
+        return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+      }
+    }
+  }
+
+  private async forwardAuthRequest(method: string, endpoint: string, res: Response, data?: any) {
+    try {
+      const serviceName = this.configService.get<string>('AUTH_SERVICE_NAME');
+      const servicePrefix = this.configService.get<string>('AUTH_SERVICE_PREFIX');
+      const instances = await this.consulService.getServiceInstances(serviceName);
+      const instance = await this.serviceLoadBalancer.getNextInstance(instances, servicePrefix, serviceName);
+      if (this.serviceLoadBalancer.circuitBreaker.state === 'OPEN') {
+        return res.status(503).json({ message: 'Circuit breaker is open' });
+      }
+
+      const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
+      let result;
+      switch (method) {
+        case 'GET':
+          result = await axios.get(targetUrl);
+          break;
+        case 'POST':
+          result = await axios.post(targetUrl, data);
+          break;
+        case 'PUT':
+          result = await axios.put(targetUrl, data);
+          break;
+        case 'DELETE':
+          result = await axios.delete(targetUrl);
+          break;
+        default:
+          return res.status(400).json({ message: 'Unsupported method' });
+      }
+      return res.status(result.status).json(result.data);
+    } catch (err) {
+      if (err.response) {
+        return res.status(err.response.status).json({ message: err.response.statusText, data: err.response.data });
+      } else {
+        return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+      }
     }
   }
 

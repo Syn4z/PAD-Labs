@@ -2,7 +2,7 @@ import { CircuitBreaker } from '../middleware/circuit-breaker.middleware';
 import axios from 'axios';
 
 export abstract class BaseLoadBalancerService {
-  protected circuitBreaker: CircuitBreaker;
+  public circuitBreaker: CircuitBreaker;
 
   constructor(failureThreshold: number, successThreshold: number, timeout: number) {
     this.circuitBreaker = new CircuitBreaker(failureThreshold, successThreshold, timeout);
