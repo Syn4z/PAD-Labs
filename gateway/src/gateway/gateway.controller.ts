@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Res } from '@nestjs/common';
 import { ConsulService } from '../load-balancer/consul.service';
 import { RoundRobinService } from '../load-balancer/round-robin-balancer.service';
 import { Response } from 'express';
@@ -17,7 +17,26 @@ export class GatewayController {
   }
 
   @Get('game-store/:endpoint')
-  async forwardRequest(@Param('endpoint') endpoint: string) {
+  async forwardGetRequest(@Param('endpoint') endpoint: string) {
+    return this.forwardRequest('GET', endpoint);
+  }
+
+  @Post('game-store/:endpoint')
+  async forwardPostRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
+    return this.forwardRequest('POST', endpoint, body);
+  }
+
+  @Put('game-store/:endpoint')
+  async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
+    return this.forwardRequest('PUT', endpoint, body);
+  }
+
+  @Delete('game-store/:endpoint')
+  async forwardDeleteRequest(@Param('endpoint') endpoint: string) {
+    return this.forwardRequest('DELETE', endpoint);
+  }
+
+  private async forwardRequest(method: string, endpoint: string, data?: any) {
     try {
       const serviceName = this.configService.get<string>('SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('SERVICE_PREFIX');
@@ -25,7 +44,23 @@ export class GatewayController {
       const instance = await this.roundRobinService.getNextInstance(instances, servicePrefix);
       const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
 
-      const result = await axios.get(targetUrl);
+      let result;
+      switch (method) {
+        case 'GET':
+          result = await axios.get(targetUrl);
+          break;
+        case 'POST':
+          result = await axios.post(targetUrl, data);
+          break;
+        case 'PUT':
+          result = await axios.put(targetUrl, data);
+          break;
+        case 'DELETE':
+          result = await axios.delete(targetUrl);
+          break;
+        default:
+          throw new Error('Unsupported method');
+      }
       return result.data;
     } catch (err) {
       throw new Error('Error forwarding request: ' + err.message);
