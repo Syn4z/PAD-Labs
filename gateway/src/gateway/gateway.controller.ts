@@ -5,6 +5,8 @@ import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.serv
 import { Response } from 'express';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import { GrpcMethod } from '@nestjs/microservices';
+import { BuyGameRequest, BuyGameResponse } from '../grpc/game-store.interface';
 
 @Controller('gateway')
 export class GatewayController {
@@ -31,6 +33,24 @@ export class GatewayController {
   @Put('game-store/:endpoint')
   async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
     return this.forwardGameRequest('PUT', endpoint, res, body);
+  }
+
+  @GrpcMethod('GameStore', 'BuyGame')
+  async buyGame(data: BuyGameRequest): Promise<BuyGameResponse> {
+    try {
+      const response = await axios.post('http://172.18.0.6:5000/users/add_game', {
+        game_title: 'Core Keeper',
+        username: data.username,
+      });
+
+      if (response.status !== 200) {
+        return { message: 'Failed to add game to user profile', status_code: response.status };
+      }
+
+      return { message: 'Game added to user profile', status_code: 200 };
+    } catch (error) {
+      return { message: error.message, status_code: 500 };
+    }
   }
 
   @Delete('game-store/:endpoint')

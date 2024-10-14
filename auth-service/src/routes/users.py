@@ -9,6 +9,7 @@ from services.userService import *
 from models.database import db
 from utils.jwt_utils import generate_token, token_required
 import psutil
+import logging
 
 users_bp = Blueprint('users', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -125,7 +126,7 @@ def delete_user(user_id):
         return jsonify({'error': str(e)}), 500
     
 @users_bp.route('/add_game', methods=['POST'])
-@token_required
+# @token_required
 def add_game():
     try:
         data = request.get_json()

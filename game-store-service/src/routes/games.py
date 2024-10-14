@@ -6,8 +6,11 @@ from sqlalchemy.sql import text
 from services.gameService import *
 from models.database import db
 from __main__ import redis_client, socketio
-import requests
 import json
+import logging
+import grpc
+from game_store_pb2 import BuyGameRequest
+from game_store_pb2_grpc import GameStoreStub
 
 games_bp = Blueprint('games', __name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -141,25 +144,30 @@ def delete_game(game_id):
 def buy_game():
     data = request.get_json()
     username = data['username']
-    game_name = data['game_name']
-    try:
-        print(request.headers)
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Authorization token is missing'}), 401
+    game_title = data['game_title']
+    with grpc.insecure_channel(f'gateway:50051') as channel:
+        stub = GameStoreStub(channel)
+        try:
+            update_request = BuyGameRequest(
+                username=username,
+                game_title=game_title
+            )
+            update_response = stub.BuyGame(update_request)
+            return jsonify({'message': update_response.message}), 200
+        except grpc.RpcError as e:
+            http_status_code = map_grpc_to_http_status(e.code())
+            return jsonify({'message': e.details()}), http_status_code
+        except Exception as e:
+            return jsonify({'message': str(e)}), 500 
 
-        game = get_game_by_title(game_name)
-        if not game:
-            return jsonify({'error': 'Game not found'}), 404
-
-        headers = {'Authorization': token, 'Content-Type': 'application/json'}
-        auth_service_url = 'http://auth-service:5000/users/add_game'
-        payload = {'game_title': game.title, 'username': username}
-        
-        response = requests.post(auth_service_url, json=payload, headers=headers)
-        if response.status_code != 200:
-            return jsonify({'error': 'Failed to add game to user profile', 'details': response.json()}), response.status_code
-
-        return jsonify({'message': 'Game added to user profile'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400   
+def map_grpc_to_http_status(grpc_code):
+    grpc_to_http = {
+        grpc.StatusCode.INVALID_ARGUMENT: 400,
+        grpc.StatusCode.NOT_FOUND: 404,
+        grpc.StatusCode.UNAUTHENTICATED: 401,
+        grpc.StatusCode.PERMISSION_DENIED: 403,
+        grpc.StatusCode.UNAVAILABLE: 503,
+        grpc.StatusCode.INTERNAL: 500,
+        grpc.StatusCode.UNKNOWN: 500,
+    }
+    return grpc_to_http.get(grpc_code, 500)     

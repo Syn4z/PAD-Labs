@@ -2,6 +2,7 @@ from flask import Flask
 from models.database import db
 from dotenv import load_dotenv
 import os
+import logging
 
 load_dotenv()
 POSTGRES_USER = os.getenv('POSTGRES_USER')
@@ -10,6 +11,8 @@ POSTGRES_DB = os.getenv('POSTGRES_DB')
 POSTGRES_HOST = os.getenv('POSTGRES_HOST')
 POSTGRES_PORT = os.getenv('POSTGRES_PORT')
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 def create_app():
     app = Flask(__name__)

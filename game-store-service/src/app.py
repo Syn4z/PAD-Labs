@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import redis
 from flask_socketio import SocketIO
+import logging
 
 load_dotenv()
 POSTGRES_USER = os.getenv('POSTGRES_USER')
@@ -15,6 +16,7 @@ REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
 def create_app():
     app = Flask(__name__)

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package game_store;
+
+service GameStore {
+  rpc BuyGame (BuyGameRequest) returns (BuyGameResponse);
+}
+
+message BuyGameRequest {
+  string username = 1;
+  string game_title = 2;
+}
+
+message BuyGameResponse {
+  string message = 1;
+  int32 status_code = 2;
+}

@@ -3,6 +3,7 @@ services:
     build: ./gateway
     ports:
       - "3000:3000"
+      - "50051:50051"
     depends_on:
       - auth-service
       - game-store-service
@@ -38,6 +39,16 @@ services:
       - ./game-store-service/.env    
     deploy:
       replicas: 3 
+
+  # game-store-service-1:
+  #   build: ./game-store-service
+  #   depends_on:
+  #     - game-db
+  #     - redis
+  #   env_file:
+  #     - ./game-store-service/.env    
+  #   ports:
+  #     - "5001:5001"    
 
   game-db:
     image: postgres:16
