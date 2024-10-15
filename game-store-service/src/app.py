@@ -5,6 +5,8 @@ import os
 import redis
 from flask_socketio import SocketIO
 import logging
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 POSTGRES_USER = os.getenv('POSTGRES_USER')
@@ -23,6 +25,12 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        default_limits=["5 per minute"]
+    )
+    limiter.init_app(app)
     return app
 
 if __name__ == '__main__':

@@ -38,7 +38,7 @@ export class GatewayController {
   @GrpcMethod('GameStore', 'BuyGame')
   async buyGame(data: BuyGameRequest): Promise<BuyGameResponse> {
     try {
-      const response = await axios.post('http://172.18.0.6:5000/users/add_game', {
+      const response = await axios.post('http://172.18.0.7:5000/users/add_game', {
         game_title: 'Core Keeper',
         username: data.username,
       });
@@ -149,7 +149,7 @@ export class GatewayController {
       if (err.response) {
         return res.status(err.response.status).json({ message: err.response.statusText, data: err.response.data });
       } else {
-        return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+        return res.status(err.status).json({ message: 'Error forwarding request', error: err.message });
       }
     }
   }
