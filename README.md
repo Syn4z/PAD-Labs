@@ -10,6 +10,8 @@ A games distribution platform with games store and authentication features.
 - [Endpoints](#endpoints)
 - [Postman Collection](./docs/postman_collection.json)
 
+----
+
 ### Steps to Run the Project
 1. **Move into the required directory:**
     ```sh
@@ -56,6 +58,8 @@ A games distribution platform with games store and authentication features.
 - **GET /gateway/auth/register** should be accessed first to authenticate the user before accessing other endpoints.
 
 For more details, refer to the [Makefile](Makefile) and the respective service directories.
+
+----
 
 ## Application Suitability
 ### Relevance
