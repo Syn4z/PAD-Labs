@@ -27,7 +27,6 @@ def status():
         return jsonify({'status': 'Game store service is running', 'database': 'disconnected', 'error': str(e)}), 500
 
 @games_bp.route('/', methods=['GET'])
-@limiter.limit("5 per minute")
 def list_games():
     cached_games = redis_client.get('games_list')
     if cached_games:
@@ -44,7 +43,6 @@ def list_games():
     return jsonify(response)
 
 @games_bp.route('/<int:game_id>', methods=['GET'])
-@limiter.limit("5 per minute")
 def get_game(game_id):
     cached_game = redis_client.get(f'game_{game_id}')
     if cached_game:
@@ -63,7 +61,6 @@ def get_game(game_id):
     return jsonify({'error': 'Game not found'}), 404
 
 @games_bp.route('/', methods=['POST'])
-@limiter.limit("5 per minute")
 def add_game():
     try:
         data = request.get_json()
@@ -91,7 +88,6 @@ def add_game():
         return jsonify({'error': str(e)}), 500
 
 @games_bp.route('/<int:game_id>', methods=['PUT'])
-@limiter.limit("5 per minute")
 def update_game(game_id):
     game = get_game_by_id(game_id)
     if game:
@@ -127,7 +123,6 @@ def update_game(game_id):
     return jsonify({'error': 'Game not found'}), 404
 
 @games_bp.route('/<int:game_id>', methods=['DELETE'])
-@limiter.limit("5 per minute")
 def delete_game(game_id):
     game = get_game_by_id(game_id)
     if game:
@@ -140,7 +135,6 @@ def delete_game(game_id):
     return jsonify({'error': 'Game not found'}), 404    
 
 @games_bp.route('/buy', methods=['POST'])
-@limiter.limit("5 per minute")
 def buy_game():
     data = request.get_json()
     username = data['username']

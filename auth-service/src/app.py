@@ -22,7 +22,8 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     limiter = Limiter(
-        key_func=get_remote_address
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour", "15 per minute"]
     )
     limiter.init_app(app)
     return app

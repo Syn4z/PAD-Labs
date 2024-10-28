@@ -12,7 +12,6 @@ import psutil
 import logging
 
 users_bp = Blueprint('users', __name__)
-limiter = Limiter(key_func=get_remote_address)
 
 
 @users_bp.route('/status', methods=['GET'])
@@ -34,7 +33,6 @@ def load():
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/', methods=['GET'])
-@limiter.limit("5 per minute")
 def list_users():
     try:
         users = get_users()
@@ -50,7 +48,6 @@ def list_users():
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
-@limiter.limit("5 per minute")
 @token_required
 def get_user(user_id):
     try:
@@ -70,7 +67,6 @@ def get_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/register', methods=['POST'])
-@limiter.limit("5 per minute")
 def register():
     try:
         data = request.get_json()
@@ -83,7 +79,6 @@ def register():
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
 def login():
     try:
         data = request.get_json()
@@ -103,7 +98,6 @@ def login():
         return jsonify({'error': str(e)}), 500
     
 @users_bp.route('/<int:user_id>', methods=['PUT'])
-@limiter.limit("5 per minute")
 def update_user(user_id):
     try:
         data = request.get_json()
@@ -113,7 +107,6 @@ def update_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
-@limiter.limit("5 per minute")
 def delete_user(user_id):
     try:
         user = get_user_by_id(user_id)
@@ -132,6 +125,7 @@ def add_game():
         data = request.get_json()
         username = data['username']
         game_title = data['game_title']
+        logging.info(f'Adding game {game_title} to user {username}')
         if not username:
             return jsonify({'error': 'Username is missing'}), 400
         if not game_title:

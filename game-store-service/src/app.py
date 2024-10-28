@@ -28,14 +28,15 @@ def create_app():
     limiter = Limiter(
         key_func=get_remote_address,
         app=app,
-        default_limits=["5 per minute"]
+        default_limits=["200 per day", "50 per hour", "15 per minute"]
     )
     limiter.init_app(app)
     return app
 
 if __name__ == '__main__':
     app = create_app()
-    socketio = SocketIO(app)
+    redis_url = f'redis://{REDIS_HOST}:{REDIS_PORT}'
+    socketio = SocketIO(app, message_queue=redis_url)
     redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
     from routes.games import games_bp
     from routes.websocket import socketio

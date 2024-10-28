@@ -6,4 +6,5 @@ export interface BuyGameRequest {
 export interface BuyGameResponse {
   message: string;
   status_code: number;
+  callback?: (response: BuyGameResponse) => void;
 }
