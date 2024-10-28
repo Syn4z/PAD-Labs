@@ -50,4 +50,4 @@ clean:        # Clean up containers, volumes, and networks
 	$(DOCKER_COMPOSE) down --volumes --remove-orphans
 
 test-auth-service:        # Run unit tests for auth-service
-	@cd $(AUTH_SERVICE_DIR)/src && python -m unittest discover -s test -p "unitTests.py"
+	@cd $(AUTH_SERVICE_DIR)/src && python3 -m unittest discover -s test -p "unitTests.py"

@@ -5,6 +5,9 @@ import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.serv
 import { Response } from 'express';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import { GrpcMethod } from '@nestjs/microservices';
+import { mapHttpToGrpcStatus } from '../grpc/http-to-grpc';
+import { BuyGameResponse } from '../grpc/game-store.interface';
 
 @Controller('gateway')
 export class GatewayController {
@@ -33,29 +36,48 @@ export class GatewayController {
     return this.forwardGameRequest('PUT', endpoint, res, body);
   }
 
+  @GrpcMethod('GameStore', 'BuyGame')
+  async buyGame(data: any, callback: (response: BuyGameResponse) => void): Promise<void> {
+    try {
+      const endpoint = 'add_game';
+      const body = {
+        game_title: data.gameTitle,
+        username: data.username,
+      };
+      const res = await this.forwardAuthRequest('POST', endpoint, body);
+      const grpcStatus = mapHttpToGrpcStatus(res.status);
+      const response: BuyGameResponse = { message: res.data, status_code: grpcStatus };
+      callback(response);
+    } catch (error) {
+      const grpcStatus = mapHttpToGrpcStatus(error.response?.status || 500);
+      const response: BuyGameResponse = { message: error.message, status_code: grpcStatus };
+      callback(response);
+    }
+  }
+
   @Delete('game-store/:endpoint')
   async forwardDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
     return this.forwardGameRequest('DELETE', endpoint, res);
   }
 
   @Get('auth/:endpoint')
-  async forwardAuthGetRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
-    return this.forwardAuthRequest('GET', endpoint, res);
+  async forwardAuthGetRequest(@Param('endpoint') endpoint: string) {
+    return this.forwardAuthRequest('GET', endpoint);
   }
 
   @Post('auth/:endpoint')
-  async forwardAuthPostRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
-    return this.forwardAuthRequest('POST', endpoint, res, body);
+  async forwardAuthPostRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
+    return this.forwardAuthRequest('POST', endpoint, body);
   }
 
   @Put('auth/:endpoint')
-  async forwardAuthPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
-    return this.forwardAuthRequest('PUT', endpoint, res, body);
+  async forwardAuthPutRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
+    return this.forwardAuthRequest('PUT', endpoint, body);
   }
 
   @Delete('auth/:endpoint')
-  async forwardAuthDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
-    return this.forwardAuthRequest('DELETE', endpoint, res);
+  async forwardAuthDeleteRequest(@Param('endpoint') endpoint: string) {
+    return this.forwardAuthRequest('DELETE', endpoint);
   }
 
   private async forwardGameRequest(method: string, endpoint: string, res: Response, data?: any) {
@@ -89,23 +111,23 @@ export class GatewayController {
       return res.status(result.status).json(result.data);
     } catch (err) {
       if (err.response) {
-        return res.status(err.response.status).json({ message: err.response.statusText, data: err.response.data });
+        return res.status(err.response.status).json({ data: err.response.data });
       } else {
         return res.status(500).json({ message: 'Error forwarding request', error: err.message });
       }
     }
   }
 
-  private async forwardAuthRequest(method: string, endpoint: string, res: Response, data?: any) {
+  private async forwardAuthRequest(method: string, endpoint: string, data?: any) {
     try {
       const serviceName = this.configService.get<string>('AUTH_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('AUTH_SERVICE_PREFIX');
       const instances = await this.consulService.getServiceInstances(serviceName);
       const instance = await this.serviceLoadBalancer.getNextInstance(instances, servicePrefix, serviceName);
       if (this.serviceLoadBalancer.circuitBreaker.state === 'OPEN') {
-        return res.status(503).json({ message: 'Circuit breaker is open' });
+        return { status: 503, data: { message: 'Circuit breaker is open' } };
       }
-
+  
       const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
       let result;
       switch (method) {
@@ -122,14 +144,14 @@ export class GatewayController {
           result = await axios.delete(targetUrl);
           break;
         default:
-          return res.status(400).json({ message: 'Unsupported method' });
+          return { status: 400, data: { message: 'Unsupported method' } };
       }
-      return res.status(result.status).json(result.data);
+      return { status: result.status, data: result.data };
     } catch (err) {
       if (err.response) {
-        return res.status(err.response.status).json({ message: err.response.statusText, data: err.response.data });
+        return { status: err.response.status, data: err.response.data };
       } else {
-        return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+        return { status: 500, data: { message: 'Error forwarding request', error: err.message } };
       }
     }
   }
