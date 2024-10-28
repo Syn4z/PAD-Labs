@@ -3,20 +3,74 @@
 ## Project Description
 A games distribution platform with games store and authentication features.
 
+## Table of Contents
+
+- [Getting Started](#steps-to-run-the-project)
+- [Docker Images](#docker-images)
+- [Endpoints](#endpoints)
+- [Postman Collection](./docs/postman_collection.json)
+
+### Steps to Run the Project
+1. **Move into the required directory:**
+    ```sh
+    cd /path/to/your/github/repository/PAD-Labs/
+    ```
+2. **Build the services:**
+    ```sh
+    make build
+    ```
+3. **Start the services:**
+    ```sh
+    make up
+    ```
+
+### Steps to Test the Project
+1. **Run unit tests for auth-service:**
+    ```sh
+    make test-auth-service
+    ```
+
+### Docker Images
+- **Build the services without using the cache:**
+    ```sh
+    make rebuild
+    ```
+- **Start a specific container:**
+    ```sh
+    make start-container CONTAINER=<name>
+    ```
+- **Stop a specific container:**
+    ```sh
+    make stop-container CONTAINER=<name>
+    ```
+- **Tail the logs of the services:**
+    ```sh
+    make logs
+    ```
+- **Clean up containers, volumes, and networks:**
+    ```sh
+    make clean
+    ```
+
+### Initial Endpoint to Access
+- **GET /gateway/auth/register** should be accessed first to authenticate the user before accessing other endpoints.
+
+For more details, refer to the [Makefile](Makefile) and the respective service directories.
+
 ## Application Suitability
-### ✔ Relevance
+### Relevance
 - Growing Digital Gaming Market Demand
 - Convenience and Accessibility
 - Seamless Payment and Acquisition
 - Seamless, Fast, and Reliable Experiences
 - Revenue Opportunities
 
-### ✔ Why microservices are necessary
+### Why microservices are necessary
 - Continuous Deployment and Updates
 - Customization and Extensibility
 - Complexity Management
 
-### ✔ Real-World Examples
+### Real-World Examples
 #### 🕹️ Steam
 - Catalog Management: Steam’s store microservice handles the vast catalog of games, DLCs, and other digital content. 
 - Purchasing and Ownership: Once a user purchases a game, this microservice communicates with Steam’s user accounts service to update the user’s library, allowing them to download and install their purchase.
@@ -29,13 +83,13 @@ A games distribution platform with games store and authentication features.
 ----
 
 ## Service Boundaries
-### ✔ System Architecture Diagram
-![System Architecture Diagram](utils/SystemArchitecture.png)
+### System Architecture Diagram
+![System Architecture Diagram](docs/SystemArchitecture.png)
 
 ----
 
 ## Technology Stack and Communication Patterns
-### ✔ Tech Stack
+### Tech Stack
 - #### Programming Languages
     - Python
     - JavaScript
@@ -59,11 +113,12 @@ A games distribution platform with games store and authentication features.
     - gRPC
     - Postman
     - Swagger
+    - Consul
 
 - #### Caching
     - Redis
 
-### ✔ Communication Patterns
+### Communication Patterns
 - #### Synchronous
     - Microservices communicate via **_RESTful APIs_**, sending **_HTTP_** requests and receiving responses.
     - **_gRPC_** offers a more efficient binary protocol and is suitable for high-performance, low-latency communication between services.
@@ -76,14 +131,17 @@ A games distribution platform with games store and authentication features.
 ## Data Management
 Each microservice will have it's separate database in PostgreSQL, resulting in each service having exclusive access to its data.
 
-### ✔ Models
+### Models
 - #### User
     ```json
         {
             "userId": "int",
             "username": "string",
             "email": "string",
-            "password": "string"
+            "password": "string",
+            "created_at": "dateTime",
+            "updated_at": "dateTime",
+            "games": "array" 
         }
     ```
 - #### Game
@@ -93,11 +151,12 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
             "title": "string",
             "genre": "string",
             "price": "float",
-            "description": "string"
+            "description": "string",
+            "release_date": "dateTime"
         }
     ```
-### ✔ Endpoints
-- ### *GET /api/status*
+### Endpoints
+- ### *GET service/status*
     - #### Response
         - ##### 200 OK
             ```json
@@ -117,9 +176,50 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }
             ```    
 
-----
+- ### *GET /users*
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "users": [
+                        {
+                            "userId": "int",
+                            "username": "string",
+                            "email": "string",
+                            "created_at": "dateTime",
+                            "updated_at": "dateTime"
+                        }
+                    ]
+                }
+            ```
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "No users found"
+                }
+            ```
 
-- ### *POST /api/users/register*
+- ### *GET /users/{user_id}*
+    - #### Response
+        - ##### 200 OK
+            ```json
+                {
+                    "userId": "int",
+                    "username": "string",
+                    "email": "string",
+                    "created_at": "dateTime",
+                    "updated_at": "dateTime",
+                    "games": "array"
+                }
+            ```
+        - ##### 404 Not Found
+            ```json
+                {
+                    "error": "User not found"
+                }
+            ```
+
+- ### *POST /users/register*
     - #### Request Body
     ```json
             {
@@ -145,7 +245,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }
             ```    
 
-- ### *POST /api/users/login*
+- ### *POST /users/login*
     - #### Request Body
         ```json
             {
@@ -169,7 +269,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }
             ```    
 
-- ### *POST /api/users/logout*
+- ### *POST /users/logout*
     - #### Request Body
         ```json
             {
@@ -191,7 +291,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                     "details": "string"
                 }   
             ```    
-- ### *PUT /api/users/{user_id}*
+- ### *PUT /users/{user_id}*
     - #### Headers
             Authorization: Bearer \<token>
 
@@ -227,7 +327,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
 
 ----
 
-- ### *GET /api/games*
+- ### *GET /games*
     - #### Response
         - ##### 200 OK
             ```json
@@ -238,13 +338,14 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                         "title": "string",
                         "genre": "string",
                         "price": "float",
-                        "description": "string"
+                        "description": "string",
+                        "release_date": "dateTime"
                         }
                     ]
                 }  
             ```       
 
-- ### *GET /api/games/{id}*
+- ### *GET /games/{id}*
     - #### Response
         - ##### 200 OK
             ```json
@@ -253,7 +354,8 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                     "title": "string",
                     "genre": "string",
                     "price": "float",
-                    "description": "string"
+                    "description": "string",
+                    "release_date": "dateTime"
                 }
             ```    
         - ##### 404 Not Found
@@ -263,7 +365,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }
             ```                
 
-- ### *POST /api/games*
+- ### *POST /games*
     - #### Request Body
         ```json
             {
@@ -290,7 +392,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }    
             ```    
 
-- ### *PUT /api/games/{id}*
+- ### *PUT /games/{id}*
     - #### Request Body
         ```json
             {
@@ -315,7 +417,7 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
                 }  
             ```    
 
-- ### *DELETE /api/games/{id}*
+- ### *DELETE /games/{id}*
     - #### Response
         - ##### 200 OK
             ```json
@@ -332,8 +434,273 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
 
 ----
 
-- ### Subscription Messages
-    1. #### Subscribe to a Game
+### Gateway - Game Store Endpoints
+- ### *GET /gateway/game-store/:endpoint*
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *POST /gateway/game-store/:endpoint*
+    - #### Request Body
+        ```json
+        {
+            "data": "request data"
+        }
+        ```
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *PUT /gateway/game-store/:endpoint*
+    - #### Request Body
+        ```json
+        {
+            "data": "request data"
+        }
+        ```
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *DELETE /gateway/game-store/:endpoint*
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+### Gateway - Authentication Endpoints
+- ### *GET /gateway/auth/:endpoint*
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *POST /gateway/auth/:endpoint*
+    - #### Request Body
+        ```json
+        {
+            "data": "request data"
+        }
+        ```
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *PUT /gateway/auth/:endpoint*
+    - #### Request Body
+        ```json
+        {
+            "data": "request data"
+        }
+        ```
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+- ### *DELETE /gateway/auth/:endpoint*
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "data": "response data"
+            }
+            ```
+        - ##### 400 Bad Request
+            ```json
+            {
+                "message": "Unsupported method"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "Error forwarding request",
+                "error": "error message"
+            }
+            ```
+
+### Service Discovery (Consul)
+- ### *Access the Consul UI:*
+    - Open your browser and navigate to `http://localhost:8500` to access the Consul UI.
+
+### gRPC
+- ### *POST /gateway/game-store/buy*
+    - #### Request Body
+        ```json
+        {
+            "gameTitle": "string",
+            "username": "string"
+        }
+        ```
+    - #### Response
+        - ##### 200 OK
+            ```json
+            {
+                "message": "response message",
+                "status_code": "grpc status code"
+            }
+            ```
+        - ##### 500 Internal Server Error
+            ```json
+            {
+                "message": "error message",
+                "status_code": "grpc status code"
+            }
+            ```
+
+### WebSocket Messages
+- #### Connect to WebSocket
+    - #### Client to Server
+        ```json
+        {
+            "action": "connect",
+            "username": "string"
+        }
+        ```
+
+    - #### Server Response
+        ```json
+        {
+            "message": "Connected to WebSocket",
+            "username": "string"
+        }
+        ```
+
+- #### Disconnect from WebSocket
+    - #### Client to Server
+        ```json
+        {
+            "action": "disconnect",
+            "username": "string"
+        }
+        ```
+
+    - #### Server Response
+        ```json
+        {
+            "message": "Disconnected from WebSocket",
+            "username": "string"
+        }
+        ```
+
+- #### Subscribe to a Game
     - #### Client to Server
         ```json
         {
@@ -348,8 +715,8 @@ Each microservice will have it's separate database in PostgreSQL, resulting in e
             "message": "Subscribed to game_updates"
         }
         ```
-    2. #### Unsubscribe from a Game
 
+- #### Unsubscribe from a Game
     - #### Client to Server
         ```json
         {
