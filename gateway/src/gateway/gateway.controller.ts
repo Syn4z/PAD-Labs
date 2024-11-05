@@ -85,7 +85,7 @@ export class GatewayController {
       const serviceName = this.configService.get<string>('GAME_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('GAME_SERVICE_PREFIX');
       const instances = await this.consulService.getServiceInstances(serviceName);
-      const instance = await this.roundRobinService.getNextInstance(instances, servicePrefix);
+      const instance = await this.roundRobinService.getNextInstance(instances, servicePrefix, serviceName);
       if (this.roundRobinService.circuitBreaker.state === 'OPEN') {
         return res.status(503).json({ message: 'Circuit breaker is open' });
       }
@@ -123,30 +123,39 @@ export class GatewayController {
       const serviceName = this.configService.get<string>('AUTH_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('AUTH_SERVICE_PREFIX');
       const instances = await this.consulService.getServiceInstances(serviceName);
-      const instance = await this.serviceLoadBalancer.getNextInstance(instances, servicePrefix, serviceName);
-      if (this.serviceLoadBalancer.circuitBreaker.state === 'OPEN') {
-        return { status: 503, data: { message: 'Circuit breaker is open' } };
+
+      let instance;
+      let attempts = 0;
+      while (attempts <= 3) {
+        try {
+          instance = await this.serviceLoadBalancer.getNextInstance(instances, servicePrefix, serviceName);
+          const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
+          let result;
+          switch (method) {
+            case 'GET':
+              result = await axios.get(targetUrl);
+              break;
+            case 'POST':
+              result = await axios.post(targetUrl, data);
+              break;
+            case 'PUT':
+              result = await axios.put(targetUrl, data);
+              break;
+            case 'DELETE':
+              result = await axios.delete(targetUrl);
+              break;
+            default:
+              return { status: 400, data: { message: 'Unsupported method' } };
+          }
+          return { status: result.status, data: result.data };
+        } catch (error) {
+          console.error(`Service call failed for instance ${instance}: ${error.message}`);
+          attempts++;
+          if (attempts >= 3) {
+            return { status: 503, data: { message: 'All service instances are unavailable' } };
+          }
+        }
       }
-  
-      const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
-      let result;
-      switch (method) {
-        case 'GET':
-          result = await axios.get(targetUrl);
-          break;
-        case 'POST':
-          result = await axios.post(targetUrl, data);
-          break;
-        case 'PUT':
-          result = await axios.put(targetUrl, data);
-          break;
-        case 'DELETE':
-          result = await axios.delete(targetUrl);
-          break;
-        default:
-          return { status: 400, data: { message: 'Unsupported method' } };
-      }
-      return { status: result.status, data: result.data };
     } catch (err) {
       if (err.response) {
         return { status: err.response.status, data: err.response.data };

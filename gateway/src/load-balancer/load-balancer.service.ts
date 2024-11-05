@@ -1,11 +1,11 @@
-import { CircuitBreaker } from '../middleware/circuit-breaker.middleware';
+import { LoadCircuitBreaker } from '../middleware/load-circuit-breaker.middleware';
 import axios from 'axios';
 
 export abstract class BaseLoadBalancerService {
-  public circuitBreaker: CircuitBreaker;
+  public circuitBreaker: LoadCircuitBreaker;
 
-  constructor(failureThreshold: number, successThreshold: number, timeout: number) {
-    this.circuitBreaker = new CircuitBreaker(failureThreshold, successThreshold, timeout);
+  constructor(failureThreshold: number, timeout: number, consulUrl: string) {
+    this.circuitBreaker = new LoadCircuitBreaker(failureThreshold, timeout, consulUrl);
   }
 
   protected async callService(instance: string, servicePrefix: string): Promise<any> {

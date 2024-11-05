@@ -28,7 +28,7 @@ def create_app():
     limiter = Limiter(
         key_func=get_remote_address,
         app=app,
-        default_limits=["200 per day", "50 per hour", "15 per minute"]
+        default_limits=["200 per day"]
     )
     limiter.init_app(app)
     return app
