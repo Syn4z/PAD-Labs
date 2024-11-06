@@ -8,7 +8,7 @@ export class TimeoutMiddleware implements NestMiddleware {
       if (!res.headersSent) {
         res.status(408).json({ error: 'Request timed out' });
       }
-    }, 5000);
+    }, 60000);
 
     res.on('finish', () => clearTimeout(timeout));
     next();
