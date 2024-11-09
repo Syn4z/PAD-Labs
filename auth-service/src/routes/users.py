@@ -1,8 +1,6 @@
 from random import randrange
-from time import sleep
 from flask import Blueprint, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+import requests
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.sql import text
 from services.userService import *
@@ -10,9 +8,35 @@ from models.database import db
 from utils.jwt_utils import generate_token, token_required
 import psutil
 import logging
+from logstash_formatter import LogstashFormatterV1
+import os
+
+
+class HTTPLogstashHandler(logging.Handler):
+    def __init__(self, host, port):
+        logging.Handler.__init__(self)
+        self.host = host
+        self.port = port
+
+    def emit(self, record):
+        try:
+            log_entry = self.format(record)
+            url = f'http://{self.host}:{self.port}'
+            headers = {'Content-Type': 'application/json'}
+            requests.post(url, data=log_entry, headers=headers)
+        except Exception as e:
+            print(f"Failed to send log to Logstash: {e}")
+
+logger = logging.getLogger('auth-service')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(LogstashFormatterV1())
+logger.addHandler(console_handler)
+logstash_handler = HTTPLogstashHandler(host=os.getenv('LOGSTASH_HOST'), port=os.getenv('LOGSTASH_PORT'))
+logstash_handler.setFormatter(LogstashFormatterV1())
+logger.addHandler(logstash_handler)
 
 users_bp = Blueprint('users', __name__)
-
 
 @users_bp.route('/status', methods=['GET'])
 def status():
@@ -20,6 +44,10 @@ def status():
         db.session.execute(text('SELECT 1'))
         return jsonify({'status': 'Auth service is running', 'database': 'connected'}), 200
     except OperationalError as e:
+        logger.error(({
+          "service": "auth",
+          "msg": f"Database is unreachable: {str(e)}",
+        }))
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500
     except Exception as e:
         return jsonify({'status': 'Auth service is running', 'database': 'disconnected', 'error': str(e)}), 500
@@ -30,6 +58,10 @@ def load():
         cpu_usage = psutil.cpu_percent(interval=1) * randrange(2, 20)
         return jsonify({'cpu_usage': cpu_usage}), 200
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/', methods=['GET'])
@@ -45,6 +77,10 @@ def list_users():
             'games': user.games
         } for user in users])
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
@@ -64,24 +100,62 @@ def get_user(user_id):
             })
         return jsonify({'error': 'User not found'}), 404
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/register', methods=['POST'])
 def register():
     try:
         data = request.get_json()
+        if 'username' not in data:
+            logger.error(({
+                "service": "auth",
+                "msg": "Username is missing",
+            }))
+            return jsonify({'error': 'Username is missing'}), 400
+        if 'password' not in data:
+            logger.error(({
+                "service": "auth",
+                "msg": "Password is missing",
+            }))
+            return jsonify({'error': 'Password is missing'}), 400
+        if 'email' not in data:
+            logger.error(({
+                "service": "auth",
+                "msg": "Email is missing",
+            }))
+            return jsonify({'error': 'Email is missing'}), 400
         new_user = create_user(data['username'], data['email'], data['password'])
         return jsonify({'message': 'User registered', 'user': new_user.username}), 201
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error': 'User already exists'}), 409
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
+        if 'username' not in data:
+            logger.error(({
+                "service": "auth",
+                "msg": "Username is missing",
+            }))
+            return jsonify({'error': 'Username is missing'}), 400
+        if 'password' not in data:
+            logger.error(({
+                "service": "auth",
+                "msg": "Password is missing",
+            }))
+            return jsonify({'error': 'Password is missing'}), 400
         user = verify_user(data['username'], data['password'])
         if user:
             token = generate_token(user.id)
@@ -95,6 +169,10 @@ def login():
             })
         return jsonify({'error': 'Invalid username or password'}), 401
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
     
 @users_bp.route('/<int:user_id>', methods=['PUT'])
@@ -104,6 +182,10 @@ def update_user(user_id):
         updated_user = update_user_by_id(user_id, data)
         return jsonify({'message': 'User updated', 'user': updated_user})
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
@@ -116,16 +198,18 @@ def delete_user(user_id):
             return jsonify({'message': 'User deleted'})
         return jsonify({'error': 'User not found'}), 404
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
     
 @users_bp.route('/add_game', methods=['POST'])
-# @token_required
 def add_game():
     try:
         data = request.get_json()
         username = data['username']
         game_title = data['game_title']
-        logging.info(f'Adding game {game_title} to user {username}')
         if not username:
             return jsonify({'error': 'Username is missing'}), 400
         if not game_title:
@@ -136,4 +220,8 @@ def add_game():
         except ValueError as e:
             return jsonify({'error': str(e)}), 409
     except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 400

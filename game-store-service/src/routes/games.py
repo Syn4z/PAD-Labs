@@ -9,12 +9,39 @@ from __main__ import redis_client, socketio
 import json
 import logging
 import grpc
+import requests
 from game_store_pb2 import BuyGameRequest
 from game_store_pb2_grpc import GameStoreStub
+from logstash_formatter import LogstashFormatterV1
+import os
+
+
+class HTTPLogstashHandler(logging.Handler):
+    def __init__(self, host, port):
+        logging.Handler.__init__(self)
+        self.host = host
+        self.port = port
+
+    def emit(self, record):
+        try:
+            log_entry = self.format(record)
+            url = f'http://{self.host}:{self.port}'
+            headers = {'Content-Type': 'application/json'}
+            requests.post(url, data=log_entry, headers=headers)
+        except Exception as e:
+            print(f"Failed to send log to Logstash: {e}")
+
+logger = logging.getLogger('game-store-service')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(LogstashFormatterV1())
+logger.addHandler(console_handler)
+logstash_handler = HTTPLogstashHandler(host=os.getenv('LOGSTASH_HOST'), port=os.getenv('LOGSTASH_PORT'))
+logstash_handler.setFormatter(LogstashFormatterV1())
+logger.addHandler(logstash_handler)
 
 games_bp = Blueprint('games', __name__)
 limiter = Limiter(key_func=get_remote_address)
-
 
 @games_bp.route('/status', methods=['GET'])
 def status():
@@ -22,6 +49,10 @@ def status():
         db.session.execute(text('SELECT 1'))
         return jsonify({'status': 'Game store service is running', 'database': 'connected'}), 200
     except OperationalError as e:
+        logger.error(({
+          "service": "game-store",
+          "msg": f"Database is unreachable: {str(e)}",
+        }))
         return jsonify({'status': 'Game store service is running', 'database': 'disconnected', 'error': 'Database is unreachable'}), 500
     except Exception as e:
         return jsonify({'status': 'Game store service is running', 'database': 'disconnected', 'error': str(e)}), 500
@@ -64,6 +95,12 @@ def get_game(game_id):
 def add_game():
     try:
         data = request.get_json()
+        if 'title' not in data or 'genre' not in data or 'price' not in data or 'description' not in data:
+            logger.error(({
+                "service": "game-store",
+                "msg": "Missing required fields",
+            }))
+            return jsonify({'error': 'Missing required fields'}), 400
         game = create_game(data['title'], data['genre'], data['price'], data['description'])
         redis_client.delete('games_list')
         socketio.emit('game_update', {'action': 'add', 'game': {
@@ -85,6 +122,10 @@ def add_game():
         db.session.rollback()
         return jsonify({'error': 'Game already exists'}), 409
     except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
         return jsonify({'error': str(e)}), 500
 
 @games_bp.route('/<int:game_id>', methods=['PUT'])
@@ -137,6 +178,18 @@ def delete_game(game_id):
 @games_bp.route('/buy', methods=['POST'])
 def buy_game():
     data = request.get_json()
+    if 'username' not in data or 'game_title' not in data:
+        logger.error(({
+            "service": "game-store",
+            "msg": "Missing required fields",
+        }))
+        return jsonify({'error': 'Missing required fields'}), 400
+    if not data['username'] or not data['game_title']:
+        logger.error(({
+            "service": "game-store",
+            "msg": "Empty fields",
+        }))
+        return jsonify({'error': 'Empty fields'}), 400
     username = data['username']
     game_title = data['game_title']
     with grpc.insecure_channel(f'gateway:50051') as channel:
@@ -152,6 +205,10 @@ def buy_game():
             http_status_code = map_grpc_to_http_status(e.code())
             return jsonify({'message': e.details()}), http_status_code
         except Exception as e:
+            logger.error(({
+                "service": "game-store",
+                "msg": f"{str(e)}",
+            }))
             return jsonify({'message': str(e)}), 500 
 
 def map_grpc_to_http_status(grpc_code):

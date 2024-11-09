@@ -36,7 +36,9 @@
     "grpc_tools_node_protoc_ts": "^5.3.3",
     "grpc-tools": "^1.12.4",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "winston": "^3.16.0",
+    "winston-logstash-transport": "^2.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
