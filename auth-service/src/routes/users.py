@@ -13,17 +13,22 @@ import os
 
 
 class HTTPLogstashHandler(logging.Handler):
-    def __init__(self, host, port):
+    def __init__(self, host, port, tags):
         logging.Handler.__init__(self)
         self.host = host
         self.port = port
+        self.tags = tags
 
     def emit(self, record):
         try:
             log_entry = self.format(record)
             url = f'http://{self.host}:{self.port}'
             headers = {'Content-Type': 'application/json'}
-            requests.post(url, data=log_entry, headers=headers)
+            data = {
+                "message": log_entry,
+                "tags": self.tags
+            }
+            requests.post(url, json=data, headers=headers)
         except Exception as e:
             print(f"Failed to send log to Logstash: {e}")
 
@@ -32,7 +37,7 @@ logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(LogstashFormatterV1())
 logger.addHandler(console_handler)
-logstash_handler = HTTPLogstashHandler(host=os.getenv('LOGSTASH_HOST'), port=os.getenv('LOGSTASH_PORT'))
+logstash_handler = HTTPLogstashHandler(host=os.getenv('LOGSTASH_HOST'), port=os.getenv('LOGSTASH_PORT'), tags=["auth"])
 logstash_handler.setFormatter(LogstashFormatterV1())
 logger.addHandler(logstash_handler)
 

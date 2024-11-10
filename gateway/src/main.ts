@@ -10,12 +10,16 @@ async function bootstrap() {
     level: 'info',
     format: winston.format.combine(
       winston.format.timestamp(),
-      winston.format.json()
+      winston.format.json(),
+      winston.format((info) => {
+        info.tags = ['gateway'];
+        return info;
+      })()
     ),
     transports: [
       new winston.transports.Console(),
       new winston.transports.Http({
-        port: 6000,
+        port: 5046,
         host: 'logstash',
         ssl: false,
       })
