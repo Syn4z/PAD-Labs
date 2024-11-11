@@ -205,8 +205,16 @@ def buy_game():
                 game_title=game_title
             )
             update_response = stub.BuyGame(update_request)
+            logger.info(({
+                "service": "game-store",
+                "msg": f"Game bought: {update_response.message}",
+            }))
             return jsonify({'message': update_response.message}), 200
         except grpc.RpcError as e:
+            logger.error(({
+                "service": "game-store",
+                "msg": f"{e.details(), e.code(), e}",
+            }))
             http_status_code = map_grpc_to_http_status(e.code())
             return jsonify({'message': e.details()}), http_status_code
         except Exception as e:
@@ -222,6 +230,7 @@ def map_grpc_to_http_status(grpc_code):
         grpc.StatusCode.NOT_FOUND: 404,
         grpc.StatusCode.UNAUTHENTICATED: 401,
         grpc.StatusCode.PERMISSION_DENIED: 403,
+        grpc.StatusCode.ALREADY_EXISTS: 409,
         grpc.StatusCode.UNAVAILABLE: 503,
         grpc.StatusCode.INTERNAL: 500,
         grpc.StatusCode.UNKNOWN: 500,

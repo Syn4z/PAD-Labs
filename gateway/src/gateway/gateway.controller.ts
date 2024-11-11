@@ -5,10 +5,9 @@ import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.serv
 import { Response } from 'express';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
-import { GrpcMethod } from '@nestjs/microservices';
-import { mapHttpToGrpcStatus } from '../grpc/http-to-grpc';
+import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { BuyGameResponse } from '../grpc/game-store.interface';
-import { endWith } from 'rxjs';
+import { status, ServiceError } from '@grpc/grpc-js';
 
 @Controller('gateway')
 export class GatewayController {
@@ -36,78 +35,31 @@ export class GatewayController {
   async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
     return this.forwardGameRequest('PUT', endpoint, res, body);
   }
-
-  // @GrpcMethod('GameStore', 'BuyGame')
-  // async buyGame(data: any, callback: (response: BuyGameResponse) => void): Promise<void> {
-  //   try {
-  //     const endpoint = 'add_game';
-  //     const body = {
-  //       game_title: data.gameTitle,
-  //       username: data.username,
-  //     };
-  //     const result = await this.forwardAuthRequest('POST', endpoint, null, body);
-  //     console.log('Result:', result);
-  //     // const grpcStatus = mapHttpToGrpcStatus(result.status);
-  //     // const response: BuyGameResponse = { message: result.data.message, status_code: grpcStatus };
-  //     // callback(response);
-  //   } catch (error) {
-  //     const grpcStatus = mapHttpToGrpcStatus(error.response?.status || 500);
-  //     const response: BuyGameResponse = { message: error.message, status_code: grpcStatus };
-  //     callback(response);
-  //   }
-  // }
-  // async processAuthRequest(method: string, endpoint: string, res: Response, data?: any) {
-  //   try {
-  //     // Call the original forwardAuthRequest method
-  //     const response = await this.forwardAuthRequest(method, endpoint, res, data);
-      
-  //     // Process the response here if necessary
-  //     console.log('Received response:', response);
   
-  //     // Example processing (e.g., extracting specific fields, additional checks)
-  //     const processedData = {
-  //       success: true,
-  //       data: response, // Modify this as needed
-  //     };
-  
-  //     // Send the processed response back
-  //     res.json(processedData);
-  //   } catch (error) {
-  //     // Handle any errors from forwardAuthRequest
-  //     console.error('Error in processAuthRequest:', error);
-  //     res.status(error.status || 500).json({ message: 'Failed to process request', error: error.message || error });
-  //     return { success: false, error: error.message || error };
-  //   }
-  // }
-  
-  // @GrpcMethod('GameStore', 'BuyGame')
-  // async handleAuthRequest(data: { method: string; endpoint: string; body?: any }): Promise<{ message: string; statusCode: number }> {
-  //   try {
-  //     // Create a mock `Response` object to pass to `processAuthRequest`
-  //     const mockRes: any = {
-  //       json: (output: any) => output, // Return data as-is for processing
-  //     };
-
-  //     // Call `processAuthRequest` and capture the response
-  //     const processedResponse = await this.processAuthRequest(data.method, data.endpoint, mockRes, data.body);
-
-  //     // Return the processed response in the gRPC format
-  //     return {
-  //       message: processedResponse.success ? 'Request processed successfully' : 'Failed to process request',
-  //       statusCode: 200, // Use appropriate status code
-  //     };
-  //   } catch (error) {
-  //     console.error('gRPC method error:', error);
-  //     return {
-  //       message: error.message || 'Internal server error',
-  //       statusCode: error.status || 500,
-  //     };
-  //   }
-  // }
-
   @Delete('game-store/:endpoint')
   async forwardDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
     return this.forwardGameRequest('DELETE', endpoint, res);
+  }
+
+  @GrpcMethod('GameStore', 'BuyGame')
+  async buyGame(data: any): Promise<BuyGameResponse> {
+    const body = {
+      game_title: data.gameTitle,
+      username: data.username,
+    };
+    try {
+      await this.forwardAuthRequest('POST', 'add_game', null, body);
+      return {
+        message: `Game ${data.gameTitle} added to ${data.username} profile`,
+        status_code: 200,
+      };
+    } catch (error) {
+      console.error('Error in handleAuthRequest:', error);
+      throw new RpcException({
+        code: status.ALREADY_EXISTS,
+        message: error.error || 'An internal server error occurred.',
+      });
+    }
   }
 
   @Get('auth/:endpoint')
@@ -163,13 +115,14 @@ export class GatewayController {
     }
   }
 
-  private async forwardAuthRequest(method: string, endpoint: string, res: Response, data?: any) {
+  private async forwardAuthRequest(method: string, endpoint: string, res?: Response, data?: any) {
     try {
       const serviceName = this.configService.get<string>('AUTH_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('AUTH_SERVICE_PREFIX');
       const instance = await this.serviceLoadBalancer.getNextInstance(servicePrefix, serviceName);
       const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
       let result;
+  
       switch (method) {
         case 'GET':
           result = await axios.get(targetUrl);
@@ -184,17 +137,32 @@ export class GatewayController {
           result = await axios.delete(targetUrl);
           break;
         default:
-          return res.status(400).json({ message: 'Unsupported method' });
+          if (res) {
+            return res.status(400).json({ message: 'Unsupported method' });
+          } else {
+            throw new Error('Unsupported method');
+          }
       }
-      return res.status(result.status).json(result.data);
-    } catch (err) {
-      if (err.response) {
-        return res.status(err.response.status).json({ data: err.response.data });
+  
+      if (res) {
+        return res.status(result.status).json(result.data);
       } else {
-        return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+        // Return the result directly if `res` is not provided
+        return result.data;
+      }
+    } catch (err) {
+      if (res) {
+        if (err.response) {
+          return res.status(err.response.status).json({ data: err.response.data });
+        } else {
+          return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+        }
+      } else {
+        // Throw an error or return the error data if no `res` is available
+        throw err.response ? err.response.data : new Error('Error forwarding request: ' + err.message);
       }
     }
-  }
+  }  
 
   @Get('status')
   async getGatewayStatus(@Res() res: Response) {

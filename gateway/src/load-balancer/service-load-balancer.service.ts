@@ -41,6 +41,11 @@ export class ServiceLoadBalancer extends BaseLoadBalancerService {
           "msg": `Error fetching load for instance ${instance}: ${error.message}`,
         }));
         this.circuitBreaker.serviceId = `${serviceName}-${instance.split(':')[0]}`;
+        await this.loggerInfo.info(JSON.stringify({
+          "service": "gateway",
+          "module": "round-robin-balancer",
+          "msg": `Deregistering instance ${instance}`,
+        }));
         await this.circuitBreaker.deregisterService();
         return { instance, load: Infinity };
       }

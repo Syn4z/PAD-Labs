@@ -9,12 +9,16 @@ export class LoadCircuitBreaker extends CircuitBreaker {
     level: 'error',
     format: winston.format.combine(
       winston.format.timestamp(),
-      winston.format.json()
+      winston.format.json(),
+      winston.format((error) => {
+        error.tags = ['gateway'];
+        return error;
+      })()
     ),
     transports: [
       new winston.transports.Console(),
       new winston.transports.Http({
-        port: 6000,
+        port: 5046,
         host: 'logstash',
         ssl: false,
       })
@@ -37,7 +41,7 @@ export class LoadCircuitBreaker extends CircuitBreaker {
       this.logger.error(JSON.stringify({
         "service": "gateway",
         "module": "load-circuit-breaker",
-        "msg": "Error: Circuit breaker is open"
+        "msg": "Circuit breaker is open"
       }));
       await this.deregisterService();
     }
