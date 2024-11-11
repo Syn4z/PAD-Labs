@@ -10,6 +10,15 @@ def handle_connect():
     else:
         socketio.emit('message', {'msg': 'Connection failed: sid missing'})
 
+@socketio.on('subscribe_game_updates')
+def handle_subscribe_game_updates():
+    sid = request.sid
+    if sid:
+        socketio.join_room('games')
+        socketio.send(f'Subscribed to game updates: {sid}')
+    else:
+        socketio.emit('message', {'msg': 'Subscription failed: sid missing'})        
+
 @socketio.on('message')
 def handle_message(data):
     sid = request.sid
