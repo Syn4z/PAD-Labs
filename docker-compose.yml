@@ -1,6 +1,7 @@
 services:
   gateway:
     build: ./gateway
+    container_name: gateway
     ports:
       - "3000:3000"
       - "50051:50051"
@@ -10,6 +11,7 @@ services:
       - game-store-service-2
       - game-store-service-3
       - consul
+      - logstash
     environment:
       - CONSUL_HOST=consul
       - CONSUL_PORT=8500
@@ -32,18 +34,9 @@ services:
     volumes:
       - ./auth-service/src/db:/docker-entrypoint-initdb.d  
 
-  # game-store-service:
-  #   build: ./game-store-service
-  #   depends_on:
-  #     - game-db
-  #     - redis
-  #   env_file:
-  #     - ./game-store-service/.env    
-  #   deploy:
-  #     replicas: 3 
-
   game-store-service-1:
     build: ./game-store-service
+    container_name: pad-labs-game-store-service-1
     depends_on:
       - game-db
       - redis
@@ -54,6 +47,7 @@ services:
   
   game-store-service-2:
     build: ./game-store-service
+    container_name: pad-labs-game-store-service-2
     depends_on:
       - game-db
       - redis
@@ -64,6 +58,7 @@ services:
 
   game-store-service-3:
     build: ./game-store-service
+    container_name: pad-labs-game-store-service-3
     depends_on:
       - game-db
       - redis
@@ -81,12 +76,52 @@ services:
 
   redis:
     image: 'redis:latest'
+    container_name: redis
     ports:
       - '6379:6379'  
 
   consul:
     build:
       context: ./service-discovery
+    container_name: consul  
     ports:
       - "8500:8500"
     command: "agent -dev -client=0.0.0.0"    
+
+  # ELK stack services
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - cluster.name=elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data  
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.10.1
+    container_name: logstash
+    volumes:
+      - ./elk-config/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ls_data:/usr/share/logstash/data
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch    
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.1
+    container_name: kibana
+    volumes:
+      - kb_data:/usr/share/kibana/data
+    ports:
+      - "5601:5601" 
+    depends_on:
+      - elasticsearch
+
+volumes:
+  es_data:
+  ls_data:
+  kb_data:

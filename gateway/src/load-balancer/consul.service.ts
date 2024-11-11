@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as Consul from 'consul';
 import axios from 'axios';
+import * as winston from 'winston';
 
 export interface ConsulServiceInstance {
     ID: string;
@@ -13,6 +14,21 @@ export interface ConsulServiceInstance {
   export class ConsulService {
     private readonly consul: Consul.Consul;
     private readonly consulUrl: string;
+    protected readonly logger = winston.createLogger({
+      level: 'error',
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
+      transports: [
+        new winston.transports.Console(),
+        new winston.transports.Http({
+          port: 6000,
+          host: 'logstash',
+          ssl: false,
+        })
+      ]
+    });
   
     constructor() {
         const consulHost = process.env.CONSUL_HOST || 'localhost';
@@ -32,6 +48,11 @@ export interface ConsulServiceInstance {
           leader: response.data,
         };
       } catch (error) {
+        this.logger.error(JSON.stringify({
+          "service": "gateway",
+          "module": "consul",
+          "msg": `Error: ${error.message}`,
+        }));
         throw new Error('Error fetching Consul status: ' + error.message);
       }
     }
@@ -47,6 +68,11 @@ export interface ConsulServiceInstance {
         .map(service => `${service.Address}:${service.Port}`);
         return instances;
       } catch (err) {
+        this.logger.error(JSON.stringify({
+          "service": "gateway",
+          "module": "consul",
+          "msg": `Error: ${err.message}`,
+        }));
         throw new Error('Error retrieving services from Consul: ' + err.message);
       }
     }
@@ -56,7 +82,29 @@ export interface ConsulServiceInstance {
         const services = await this.consul.agent.service.list() as Record<string, ConsulServiceInstance>;
         return services;
       } catch (err) {
+        this.logger.error(JSON.stringify({
+          "service": "gateway",
+          "module": "consul",
+          "msg": `Error: ${err.message}`,
+        }));
         throw new Error('Error retrieving all services from Consul: ' + err.message);
+      }
+    }
+
+    async isServiceRegistered(serviceId: string): Promise<boolean> {
+      try {
+        const response = await axios.get(`${this.consulUrl}/v1/agent/service/${serviceId}`);
+        return response.status === 200;
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          return false;
+        }
+        this.logger.error(JSON.stringify({
+          "service": "gateway",
+          "module": "consul",
+          "msg": `Error checking service registration: ${error.message}`,
+        }));
+        throw new Error('Error checking service registration: ' + error.message);
       }
     }
   }

@@ -57,7 +57,7 @@ export class CircuitBreaker {
   }
 
   public resetFailures() {
-    this.failureCount = 0;
+    // this.failureCount = 0;
     this.instanceFailures = 0;
   }
 }

@@ -5,9 +5,9 @@ import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.serv
 import { Response } from 'express';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
-import { GrpcMethod } from '@nestjs/microservices';
-import { mapHttpToGrpcStatus } from '../grpc/http-to-grpc';
+import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { BuyGameResponse } from '../grpc/game-store.interface';
+import { status, ServiceError } from '@grpc/grpc-js';
 
 @Controller('gateway')
 export class GatewayController {
@@ -35,61 +35,58 @@ export class GatewayController {
   async forwardPutRequest(@Param('endpoint') endpoint: string, @Body() body: any, @Res() res: Response) {
     return this.forwardGameRequest('PUT', endpoint, res, body);
   }
-
-  @GrpcMethod('GameStore', 'BuyGame')
-  async buyGame(data: any, callback: (response: BuyGameResponse) => void): Promise<void> {
-    try {
-      const endpoint = 'add_game';
-      const body = {
-        game_title: data.gameTitle,
-        username: data.username,
-      };
-      const res = await this.forwardAuthRequest('POST', endpoint, body);
-      const grpcStatus = mapHttpToGrpcStatus(res.status);
-      const response: BuyGameResponse = { message: res.data, status_code: grpcStatus };
-      callback(response);
-    } catch (error) {
-      const grpcStatus = mapHttpToGrpcStatus(error.response?.status || 500);
-      const response: BuyGameResponse = { message: error.message, status_code: grpcStatus };
-      callback(response);
-    }
-  }
-
+  
   @Delete('game-store/:endpoint')
   async forwardDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
     return this.forwardGameRequest('DELETE', endpoint, res);
   }
 
+  @GrpcMethod('GameStore', 'BuyGame')
+  async buyGame(data: any): Promise<BuyGameResponse> {
+    const body = {
+      game_title: data.gameTitle,
+      username: data.username,
+    };
+    try {
+      await this.forwardAuthRequest('POST', 'add_game', null, body);
+      return {
+        message: `Game ${data.gameTitle} added to ${data.username} profile`,
+        status_code: 200,
+      };
+    } catch (error) {
+      console.error('Error in handleAuthRequest:', error);
+      throw new RpcException({
+        code: status.ALREADY_EXISTS,
+        message: error.error || 'An internal server error occurred.',
+      });
+    }
+  }
+
   @Get('auth/:endpoint')
-  async forwardAuthGetRequest(@Param('endpoint') endpoint: string) {
-    return this.forwardAuthRequest('GET', endpoint);
+  async forwardAuthGetRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardAuthRequest('GET', endpoint, res);
   }
 
   @Post('auth/:endpoint')
-  async forwardAuthPostRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
-    return this.forwardAuthRequest('POST', endpoint, body);
+  async forwardAuthPostRequest(@Param('endpoint') endpoint: string, @Res() res: Response, @Body() body: any) {
+    return this.forwardAuthRequest('POST', endpoint, res, body);
   }
 
   @Put('auth/:endpoint')
-  async forwardAuthPutRequest(@Param('endpoint') endpoint: string, @Body() body: any) {
-    return this.forwardAuthRequest('PUT', endpoint, body);
+  async forwardAuthPutRequest(@Param('endpoint') endpoint: string, @Res() res: Response, @Body() body: any) {
+    return this.forwardAuthRequest('PUT', endpoint, res, body);
   }
 
   @Delete('auth/:endpoint')
-  async forwardAuthDeleteRequest(@Param('endpoint') endpoint: string) {
-    return this.forwardAuthRequest('DELETE', endpoint);
+  async forwardAuthDeleteRequest(@Param('endpoint') endpoint: string, @Res() res: Response) {
+    return this.forwardAuthRequest('DELETE', endpoint, res);
   }
 
   private async forwardGameRequest(method: string, endpoint: string, res: Response, data?: any) {
     try {
       const serviceName = this.configService.get<string>('GAME_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('GAME_SERVICE_PREFIX');
-      const instances = await this.consulService.getServiceInstances(serviceName);
-      const instance = await this.roundRobinService.getNextInstance(instances, servicePrefix, serviceName);
-      if (this.roundRobinService.circuitBreaker.state === 'OPEN') {
-        return res.status(503).json({ message: 'Circuit breaker is open' });
-      }
-  
+      const instance = await this.roundRobinService.getNextInstance(servicePrefix, serviceName);
       const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
       let result;
       switch (method) {
@@ -118,52 +115,54 @@ export class GatewayController {
     }
   }
 
-  private async forwardAuthRequest(method: string, endpoint: string, data?: any) {
+  private async forwardAuthRequest(method: string, endpoint: string, res?: Response, data?: any) {
     try {
       const serviceName = this.configService.get<string>('AUTH_SERVICE_NAME');
       const servicePrefix = this.configService.get<string>('AUTH_SERVICE_PREFIX');
-      const instances = await this.consulService.getServiceInstances(serviceName);
-
-      let instance;
-      let attempts = 0;
-      while (attempts <= 3) {
-        try {
-          instance = await this.serviceLoadBalancer.getNextInstance(instances, servicePrefix, serviceName);
-          const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
-          let result;
-          switch (method) {
-            case 'GET':
-              result = await axios.get(targetUrl);
-              break;
-            case 'POST':
-              result = await axios.post(targetUrl, data);
-              break;
-            case 'PUT':
-              result = await axios.put(targetUrl, data);
-              break;
-            case 'DELETE':
-              result = await axios.delete(targetUrl);
-              break;
-            default:
-              return { status: 400, data: { message: 'Unsupported method' } };
+      const instance = await this.serviceLoadBalancer.getNextInstance(servicePrefix, serviceName);
+      const targetUrl = `http://${instance}/${servicePrefix}/${endpoint}`;
+      let result;
+  
+      switch (method) {
+        case 'GET':
+          result = await axios.get(targetUrl);
+          break;
+        case 'POST':
+          result = await axios.post(targetUrl, data);
+          break;
+        case 'PUT':
+          result = await axios.put(targetUrl, data);
+          break;
+        case 'DELETE':
+          result = await axios.delete(targetUrl);
+          break;
+        default:
+          if (res) {
+            return res.status(400).json({ message: 'Unsupported method' });
+          } else {
+            throw new Error('Unsupported method');
           }
-          return { status: result.status, data: result.data };
-        } catch (error) {
-          console.error(`Service call failed for instance ${instance}: ${error.message}`);
-          attempts++;
-          if (attempts >= 3) {
-            return { status: 503, data: { message: 'All service instances are unavailable' } };
-          }
-        }
+      }
+  
+      if (res) {
+        return res.status(result.status).json(result.data);
+      } else {
+        // Return the result directly if `res` is not provided
+        return result.data;
       }
     } catch (err) {
-      if (err.response) {
-        return { status: err.response.status, data: err.response.data };
+      if (res) {
+        if (err.response) {
+          return res.status(err.response.status).json({ data: err.response.data });
+        } else {
+          return res.status(500).json({ message: 'Error forwarding request', error: err.message });
+        }
       } else {
-        return { status: 500, data: { message: 'Error forwarding request', error: err.message } };
+        // Throw an error or return the error data if no `res` is available
+        throw err.response ? err.response.data : new Error('Error forwarding request: ' + err.message);
       }
     }
-  }
+  }  
 
   @Get('status')
   async getGatewayStatus(@Res() res: Response) {

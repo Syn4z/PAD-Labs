@@ -1,9 +1,29 @@
 import { CircuitBreaker } from './circuit-breaker.middleware';
 import axios from 'axios';
+import * as winston from 'winston';
 
 export class LoadCircuitBreaker extends CircuitBreaker {
   private readonly consulUrl: string;
   public serviceId: string;
+  private readonly logger = winston.createLogger({
+    level: 'error',
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json(),
+      winston.format((error) => {
+        error.tags = ['gateway'];
+        return error;
+      })()
+    ),
+    transports: [
+      new winston.transports.Console(),
+      new winston.transports.Http({
+        port: 5046,
+        host: 'logstash',
+        ssl: false,
+      })
+    ]
+  });
 
   constructor(
     failureThreshold: number,
@@ -15,8 +35,14 @@ export class LoadCircuitBreaker extends CircuitBreaker {
   }
 
   protected async fail() {
+    const wasClosed = this.state === 'CLOSED';
     super.fail();
-    if (this.state === 'OPEN') {
+    if (this.state === 'OPEN' && wasClosed) {
+      this.logger.error(JSON.stringify({
+        "service": "gateway",
+        "module": "load-circuit-breaker",
+        "msg": "Circuit breaker is open"
+      }));
       await this.deregisterService();
     }
   }
@@ -27,27 +53,12 @@ export class LoadCircuitBreaker extends CircuitBreaker {
       await axios.put(`${this.consulUrl}/v1/agent/service/deregister/${this.serviceId}`);
       console.log(`Service ${this.serviceId} deregistered from Consul`);
     } catch (error) {
+      this.logger.error(JSON.stringify({
+        "service": "gateway",
+        "module": "load-circuit-breaker",
+        "msg": `Failed to deregister service ${this.serviceId} from Consul: ${error.message}`
+      }));
       console.error(`Failed to deregister service ${this.serviceId} from Consul: ${error.message}`);
     }
-  }
-
-  public async tryServices(instances: string[], servicePrefix: string): Promise<string> {
-    let lastError: any;
-    for (const instance of instances) {
-      this.resetFailures();
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          await this.call(() => axios.get(`http://${instance}/${servicePrefix}/status`));
-          return instance;
-        } catch (error) {
-          lastError = error;
-          this.fail();
-          if (attempt < 2) {
-            console.log(`Retrying service call for instance ${instance}, attempt ${attempt + 2}/3`);
-          }
-        }
-      }
-    }
-    throw lastError;
   }
 }

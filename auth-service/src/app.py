@@ -14,7 +14,7 @@ POSTGRES_HOST = os.getenv('POSTGRES_HOST')
 POSTGRES_PORT = os.getenv('POSTGRES_PORT')
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s', handlers=[logging.StreamHandler()])
 
 def create_app():
     app = Flask(__name__)
@@ -23,7 +23,7 @@ def create_app():
     db.init_app(app)
     limiter = Limiter(
         key_func=get_remote_address,
-        default_limits=["200 per day"]
+        default_limits=["200 per day", "100 per hour", "30 per minute"]
     )
     limiter.init_app(app)
     return app
