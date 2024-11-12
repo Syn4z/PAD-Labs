@@ -89,7 +89,6 @@ def list_users():
         return jsonify({'error': str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
-@token_required
 def get_user(user_id):
     try:
         user = get_user_by_id(user_id)
@@ -230,3 +229,63 @@ def add_game():
             "msg": f"{str(e)}",
         }))
         return jsonify({'error': str(e)}), 400
+
+@users_bp.route('/prepare_update_username/<int:user_id>', methods=['PUT'])
+def prepare_update_username(user_id):
+    try:
+        data = request.get_json()
+        new_username = data.get('new_username')
+        if not new_username:
+            return jsonify({'error': 'New username is missing'}), 400
+
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.temp_username = new_username
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update prepared', 'temp_username': user.temp_username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500
+
+@users_bp.route('/commit_update_username/<int:user_id>', methods=['PUT'])
+def commit_update_username(user_id):
+    try:
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        if not user.temp_username:
+            return jsonify({'error': 'No prepared username update found'}), 400
+
+        user.username = user.temp_username
+        user.temp_username = None
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update committed', 'username': user.username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500
+
+@users_bp.route('/abort_update_username/<int:user_id>', methods=['PUT'])
+def abort_update_username(user_id):
+    try:
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.temp_username = None
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update aborted'}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500

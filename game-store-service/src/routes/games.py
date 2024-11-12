@@ -73,7 +73,8 @@ def list_games():
         'title': game.title,
         'genre': game.genre,
         'price': game.price,
-        'description': game.description
+        'description': game.description,
+        'username': game.username,
     } for game in games]
     redis_client.set('games_list', json.dumps(response), ex=3600)
     return jsonify(response)
@@ -90,7 +91,8 @@ def get_game(game_id):
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
-            'description': game.description
+            'description': game.description,
+            'username': game.username,
         }
         redis_client.set(f'game_{game_id}', json.dumps(response), ex=3600)
         return jsonify(response)
@@ -106,7 +108,7 @@ def add_game():
                 "msg": "Missing required fields",
             }))
             return jsonify({'error': 'Missing required fields'}), 400
-        game = create_game(data['title'], data['genre'], data['price'], data['description'])
+        game = create_game(data['title'], data['genre'], data['price'], data['description'], data['username'])
         redis_client.delete('games_list')
         socketio.emit('game_update', {'action': 'add', 'game': {
             'id': game.id,
@@ -114,14 +116,16 @@ def add_game():
             'genre': game.genre,
             'price': game.price,
             'description': game.description,
-            'release_date': game.release_date.strftime('%Y-%m-%d')
-        }})
+            'release_date': game.release_date.strftime('%Y-%m-%d'),
+            'username': game.username
+        }}, room='games')
         return jsonify({
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
             'description': game.description,
-            'release_date': game.release_date.strftime('%Y-%m-%d')
+            'release_date': game.release_date.strftime('%Y-%m-%d'),
+            'username': game.username
         }), 201
     except IntegrityError:
         db.session.rollback()
@@ -153,13 +157,13 @@ def update_game(game_id):
             return jsonify({'error': 'A game with this title already exists'}), 409
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
-        socketio.emit(f'game_update_{game_id}', {'action': 'update', 'game': {
+        socketio.emit(f'game_update_{new_title}', {'action': 'update', 'game': {
             'id': game.id,
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
             'description': game.description
-        }})
+        }}, room='games')
         return jsonify({
             'title': game.title,
             'genre': game.genre,
@@ -176,7 +180,7 @@ def delete_game(game_id):
         db.session.commit()
         redis_client.delete(f'game_{game_id}')
         redis_client.delete('games_list')
-        socketio.emit(f'game_update_{game_id}', {'action': 'delete', 'game_id': game.title})
+        socketio.emit(f'game_update_{game_id}', {'action': 'delete', 'game_id': game.title}, room='games')
         return jsonify({'message': 'Game deleted'})
     return jsonify({'error': 'Game not found'}), 404    
 
@@ -236,3 +240,57 @@ def map_grpc_to_http_status(grpc_code):
         grpc.StatusCode.UNKNOWN: 500,
     }
     return grpc_to_http.get(grpc_code, 500)     
+
+@games_bp.route('/prepare_update_username', methods=['PUT'])
+def prepare_update_username():
+    try:
+        data = request.get_json()
+        old_username = data.get('old_username')
+        new_username = data.get('new_username')
+        if not old_username or not new_username:
+            return jsonify({'error': 'Old or new username is missing'}), 400
+
+        user = get_user_by_username(old_username)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.temp_username = new_username
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update prepared', 'temp_username': user.temp_username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500
+
+@games_bp.route('/commit_update_username', methods=['PUT'])
+def commit_update_username():
+    try:
+        games = get_all_temp_usernames()
+        for game in games:
+            game.username = game.temp_username
+            game.temp_username = None
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update committed', 'username': game.username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500
+
+@games_bp.route('/abort_update_username', methods=['PUT'])
+def abort_update_username():
+    try:
+        games = get_all_temp_usernames()
+        for game in games:
+            game.temp_username = None
+        db.session.commit()
+        return jsonify({'status': "OK", 'message': 'Username update aborted'}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500

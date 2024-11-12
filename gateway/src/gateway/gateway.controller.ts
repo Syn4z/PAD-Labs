@@ -7,7 +7,7 @@ import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { BuyGameResponse } from '../grpc/game-store.interface';
-import { status, ServiceError } from '@grpc/grpc-js';
+import { status } from '@grpc/grpc-js';
 
 @Controller('gateway')
 export class GatewayController {
@@ -147,7 +147,6 @@ export class GatewayController {
       if (res) {
         return res.status(result.status).json(result.data);
       } else {
-        // Return the result directly if `res` is not provided
         return result.data;
       }
     } catch (err) {
@@ -158,11 +157,80 @@ export class GatewayController {
           return res.status(500).json({ message: 'Error forwarding request', error: err.message });
         }
       } else {
-        // Throw an error or return the error data if no `res` is available
         throw err.response ? err.response.data : new Error('Error forwarding request: ' + err.message);
       }
     }
   }  
+
+  @Put('api/update-username')
+  async updateUsername(@Body() body: any, @Res() res: Response) {
+    const { new_username, user_id } = body;
+    if (!new_username || user_id == null) {
+      return res.status(400).json({ message: 'Invalid request: missing parameters' });
+    }
+
+    if (typeof new_username !== 'string' || new_username.length < 3) {
+      return res.status(400).json({ message: 'New username must be a string with at least 3 characters' });
+    }
+
+    if (typeof user_id !== 'number' || !Number.isInteger(user_id)) {
+      return res.status(400).json({ message: 'User ID must be an integer' });
+    }
+
+    const authInstance = await this.serviceLoadBalancer.getNextInstance('users', 'auth-service');
+    const authUrl = `http://${authInstance}/users`;
+    const gameStoreInstance = await this.roundRobinService.getNextInstance('games', 'game-store-service');
+    const gameStoreUrl = `http://${gameStoreInstance}/games`;
+
+    try {
+      if (!authUrl || !gameStoreUrl) {
+        return res.status(500).json({ message: 'No services available' });
+      }
+
+      let old_username;
+      try {
+        const response = await axios.get(`${authUrl}/${user_id}`);
+        old_username = response.data.username;
+      } catch (error) {
+        if (error.response && error.response.status) {
+          return res.status(error.response.status).json({ message: error.response.data.message });
+        } else {
+          throw error;
+        }
+      }
+
+      if (old_username === new_username) {
+        return res.status(400).json({ message: 'New username must be different' });
+      }
+
+      // Phase 1: Prepare
+      const authPrepareResponse = await axios.put(
+        `${authUrl}/prepare_update_username/${user_id}`,
+        { new_username },
+        { timeout: 5000 }
+      );
+      const gamePrepareResponse = await axios.put(
+        `${gameStoreUrl}/prepare_update_username`,
+        { old_username, new_username },
+        { timeout: 5000 }
+      );
+
+      if (authPrepareResponse.data.status !== 'OK' || gamePrepareResponse.data.status !== 'OK') {
+        throw new Error('Prepare phase failed');
+      }
+
+      // Phase 2: Commit
+      await axios.put(`${authUrl}/commit_update_username/${user_id}`, { timeout: 5000 });
+      await axios.put(`${gameStoreUrl}/commit_update_username`, { timeout: 5000 });
+
+      res.status(200).json({ message: 'Username updated successfully' });
+    } catch (error) {
+      // Abort if any step fails
+      await axios.put(`${authUrl}/abort_update_username/${user_id}`, { timeout: 5000 });
+      await axios.put(`${gameStoreUrl}/abort_update_username`, { timeout: 5000 });
+      res.status(500).json({ message: 'Failed to update username', error: error.message });
+    }
+  }
 
   @Get('status')
   async getGatewayStatus(@Res() res: Response) {
