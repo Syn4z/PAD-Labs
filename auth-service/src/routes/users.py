@@ -183,8 +183,8 @@ def login():
 def update_user(user_id):
     try:
         data = request.get_json()
-        updated_user = update_user_by_id(user_id, data)
-        return jsonify({'message': 'User updated', 'user': updated_user})
+        update_user_by_id(user_id, data['username'], data['email'], data['password'])
+        return jsonify({'message': 'User updated', 'user': data['username']})
     except Exception as e:
         logger.error(({
             "service": "auth",
@@ -292,3 +292,47 @@ def abort_update_username(user_id):
             "msg": f"{str(e)}",
         }))
         return jsonify({'error': str(e)}), 500
+    
+@users_bp.route('/<int:user_id>/saga_update_username', methods=['PUT'])   
+def update_username(user_id):
+    try:
+        data = request.get_json()
+        old_username = data.get('old_username')
+        new_username = data.get('new_username')
+        if not new_username or not old_username:
+            return jsonify({'error': 'New or old username is missing'}), 400
+
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.temp_username = old_username
+        user.username = new_username
+        db.session.commit()
+        return jsonify({'message': 'Username updated', 'username': user.username}), 200
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Username already exists'}), 409
+    except Exception as e:
+        logger.error(({
+            "service": "auth",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500 
+    
+@users_bp.route('/saga_update_username_rollback', methods=['PUT'])
+def update_username_rollback():
+    try:
+        users = get_all_temp_usernames()
+        for user in users:
+            user.username = user.temp_username
+            user.temp_username = None
+
+        db.session.commit()
+        return jsonify({'message': 'Username returned to initial state', 'username': user.username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500       

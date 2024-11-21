@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Res, HttpStatus } from '@nestjs/common';
 import { ConsulService } from '../load-balancer/consul.service';
 import { RoundRobinService } from '../load-balancer/round-robin-balancer.service';
 import { ServiceLoadBalancer } from '../load-balancer/service-load-balancer.service';
@@ -162,7 +162,7 @@ export class GatewayController {
     }
   }  
 
-  @Put('api/update-username')
+  @Put('saga_update_username')
   async updateUsername(@Body() body: any, @Res() res: Response) {
     const { new_username, user_id } = body;
     if (!new_username || user_id == null) {
@@ -229,6 +229,135 @@ export class GatewayController {
       await axios.put(`${authUrl}/abort_update_username/${user_id}`, { timeout: 5000 });
       await axios.put(`${gameStoreUrl}/abort_update_username`, { timeout: 5000 });
       res.status(500).json({ message: 'Failed to update username', error: error.message });
+    }
+  }
+
+  @Put('saga-transaction')
+  async handleSagaTransaction(@Body() body: any, @Res() res: Response) {
+    const { new_username, user_id } = body;
+
+    // Validate input
+    if (!new_username || user_id == null) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: 'Invalid request: missing parameters' });
+    }
+
+    if (typeof new_username !== 'string' || new_username.length < 3) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: 'New username must be a string with at least 3 characters' });
+    }
+
+    if (typeof user_id !== 'number' || !Number.isInteger(user_id)) {
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: 'User ID must be an integer' });
+    }
+
+    // Initialize the Saga steps
+    const steps = [];
+    let completedSteps = [];
+
+    try {
+      // Discover service instances
+      const authInstance = await this.serviceLoadBalancer.getNextInstance(
+        'users',
+        'auth-service'
+      );
+      const gameStoreInstance = await this.roundRobinService.getNextInstance(
+        'games',
+        'game-store-service'
+      );
+
+      if (!authInstance || !gameStoreInstance) {
+        return res
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .json({ message: 'No services available' });
+      }
+
+      const authUrl = `http://${authInstance}/users`;
+      const gameStoreUrl = `http://${gameStoreInstance}/games`;
+
+      // Step 1: Fetch old username
+      const userResponse = await axios.get(`${authUrl}/${user_id}`);
+      const old_username = userResponse.data.username;
+
+      if (old_username === new_username) {
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .json({ message: 'New username must be different' });
+      }
+
+      // Step 2: Update username in the Auth service
+      const authUpdateStep = async () => {
+        const compensationUrl = `${authUrl}/saga_update_username_rollback`;
+        try {
+          const response = await axios.put(
+            `${authUrl}/${user_id}/saga_update_username`,
+            { old_username, new_username },
+            { timeout: 5000 }
+          );
+          if (response.status !== 200) {
+            throw new Error('Auth service failed to update username');
+          }
+          return { compensationUrl };
+        } catch (error) {
+          throw { error, compensationUrl };
+        }
+      };
+
+      steps.push(authUpdateStep);
+
+      // Step 3: Update username in the Game Store service
+      const gameStoreUpdateStep = async () => {
+        const compensationUrl = `${gameStoreUrl}/saga_update_username_rollback`;
+        try {
+          const response = await axios.put(
+            `${gameStoreUrl}/saga_update_username`,
+            { old_username, new_username },
+            { timeout: 5000 }
+          );
+          if (response.status !== 200) {
+            throw new Error('Game Store service failed to update username');
+          }
+          return { compensationUrl };
+        } catch (error) {
+          throw { error, compensationUrl };
+        }
+      };
+
+      steps.push(gameStoreUpdateStep);
+
+      // Execute Saga steps sequentially
+      for (const step of steps) {
+        try {
+          const result = await step();
+          completedSteps.push(result); // Track completed steps
+        } catch (stepError) {
+          completedSteps.push(stepError); // Track failed step with compensation URL
+          throw stepError.error; // Re-throw the original error
+        }
+      }
+
+      return res
+        .status(HttpStatus.OK)
+        .json({ message: 'Username updated successfully' });
+    } catch (error) {
+      // Compensation logic
+      try {
+        for (const completedStep of completedSteps.reverse()) {
+          if (completedStep && completedStep.compensationUrl) {
+            await axios.put(completedStep.compensationUrl, { timeout: 5000 });
+          }
+        }
+      } catch (compensationError) {
+        console.error('Error during compensation phase:', compensationError.message);
+      }
+
+      return res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json({ message: 'Saga transaction failed to update username', error: error.message });
     }
   }
 
