@@ -26,13 +26,13 @@ services:
       replicas: 3
       
   auth-db:
-    image: postgres:16
+    build: ./auth-service/src/db
     env_file:
       - ./auth-service/.env
     ports:
       - "5433:5432"
-    volumes:
-      - ./auth-service/src/db:/docker-entrypoint-initdb.d  
+    volumes: 
+      - auth_db_data:/var/lib/postgresql/data
 
   game-store-service-1:
     build: ./game-store-service
@@ -68,11 +68,13 @@ services:
       - "5003:5001" 
 
   game-db:
-    image: postgres:16
+    build: ./game-store-service/src/db
     env_file:
       - ./game-store-service/.env
+    ports:
+      - "5434:5432"  
     volumes:
-      - ./game-store-service/src/db:/docker-entrypoint-initdb.d 
+      - game_db_data:/var/lib/postgresql/data
 
   redis:
     image: 'redis:latest'
@@ -122,6 +124,8 @@ services:
       - elasticsearch
 
 volumes:
+  auth_db_data:
+  game_db_data:
   es_data:
   ls_data:
   kb_data:

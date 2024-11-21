@@ -219,6 +219,9 @@ def add_game():
         if not game_title:
             return jsonify({'error': 'Game title is missing'}), 400
         try:
+            existing_user = get_user_by_username(username)
+            if not existing_user:
+                return jsonify({'error': 'User not found'}), 404
             user = add_game_to_user(username, game_title)
             return jsonify({'message': 'Game added to profile', 'user': user.username}), 200
         except ValueError as e:
