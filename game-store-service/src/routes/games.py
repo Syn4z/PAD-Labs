@@ -150,6 +150,7 @@ def update_game(game_id):
         game.genre = data['genre']
         game.price = data['price']
         game.description = data['description']
+        game.username = data['username']
         try:
             db.session.commit()
         except IntegrityError:
@@ -162,13 +163,15 @@ def update_game(game_id):
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
-            'description': game.description
+            'description': game.description,
+            'username': game.username
         }}, room='games')
         return jsonify({
             'title': game.title,
             'genre': game.genre,
             'price': game.price,
-            'description': game.description
+            'description': game.description,
+            'username': game.username
         })
     return jsonify({'error': 'Game not found'}), 404
 
@@ -250,7 +253,7 @@ def prepare_update_username():
         if not old_username or not new_username:
             return jsonify({'error': 'Old or new username is missing'}), 400
 
-        user = get_user_by_username(old_username)
+        user = get_game_by_username(old_username)
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
@@ -294,3 +297,48 @@ def abort_update_username():
             "msg": f"{str(e)}",
         }))
         return jsonify({'error': str(e)}), 500
+    
+@games_bp.route('/saga_update_username', methods=['PUT'])
+def update_username():
+    try:
+        data = request.get_json()
+        old_username = data.get('old_username')
+        new_username = data.get('new_username')
+        if not old_username or not new_username:
+            return jsonify({'error': 'Old or new username is missing'}), 400
+
+        game = get_game_by_username(old_username)
+        if not game:
+            return jsonify({'error': 'User not found'}), 404
+        
+        game.temp_username = old_username
+        game.username = new_username
+        db.session.commit()
+        redis_client.delete(f'game_{game.id}')
+        redis_client.delete('games_list')
+        return jsonify({'message': 'Username updated', 'username': game.username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500 
+
+@games_bp.route('/saga_update_username_rollback', methods=['PUT'])
+def update_username_rollback():
+    try:
+        games = get_all_temp_usernames()
+        for game in games:
+            game.username = game.temp_username
+            game.temp_username = None
+
+        db.session.commit()
+        redis_client.delete(f'game_{game.id}')
+        redis_client.delete('games_list')
+        return jsonify({'message': 'Username returned to initial state', 'username': game.username}), 200
+    except Exception as e:
+        logger.error(({
+            "service": "game-store",
+            "msg": f"{str(e)}",
+        }))
+        return jsonify({'error': str(e)}), 500       

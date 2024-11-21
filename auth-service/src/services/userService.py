@@ -46,3 +46,6 @@ def add_game_to_user(username, game_title):
             flag_modified(user, 'games')
             db.session.commit()
     return user
+
+def get_all_temp_usernames():
+    return db.session.query(User).filter(User.temp_username.isnot(None)).all()

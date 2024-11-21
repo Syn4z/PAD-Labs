@@ -28,7 +28,7 @@ def update_game_by_id(game_id: int, title: str, genre: str, price: float, descri
         db.session.commit()
     return game
 
-def get_user_by_username(username: str):
+def get_game_by_username(username: str):
     return db.session.query(Game).filter_by(username=username).first()
 
 def get_all_temp_usernames():
