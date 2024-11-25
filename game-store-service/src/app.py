@@ -36,9 +36,9 @@ if __name__ == '__main__':
     app = create_app()
     socketio = SocketIO(app)
     redis_nodes = [
-        ClusterNode('game-store-redis-replica-1', 6379),
-        ClusterNode('game-store-redis-replica-2', 6379),
-        ClusterNode('game-store-redis-replica-3', 6379)
+        ClusterNode('game-store-redis-leader-1', 6379),
+        ClusterNode('game-store-redis-leader-2', 6379),
+        ClusterNode('game-store-redis-leader-3', 6379)
     ]
     try:
         redis_client = RedisCluster(startup_nodes=redis_nodes, decode_responses=True)
