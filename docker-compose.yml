@@ -34,19 +34,19 @@ services:
     volumes: 
       - auth_db_data:/var/lib/postgresql/data
 
-  # Game store
+  # Game Store
   game-store-service-1:
     build: ./game-store-service
     container_name: pad-labs-game-store-service-1
     depends_on:
       - game-db
-      - redis-replica-1
-      - redis-replica-2
-      - redis-replica-3
+      - redis-leader-1
+      - redis-leader-2
+      - redis-leader-3
     env_file:
       - ./game-store-service/.env  
     environment:
-      - REDIS_HOST=redis-replica-1  
+      - REDIS_HOST=redis-leader-1  
       - REDIS_PORT=6379  
     ports:
       - "5001:5001" 
@@ -56,13 +56,14 @@ services:
     container_name: pad-labs-game-store-service-2
     depends_on:
       - game-db
-      - redis-replica-1
-      - redis-replica-2
-      - redis-replica-3
+      - redis-leader-1
+      - redis-leader-2
+      - redis-leader-3
     env_file:
       - ./game-store-service/.env    
     environment:
-      - REDIS_HOST=redis-replica-2  
+      - REDIS_HOST=redis-leader-2  
+      - REDIS_PORT=6379
     ports:
       - "5002:5001"        
 
@@ -71,13 +72,14 @@ services:
     container_name: pad-labs-game-store-service-3
     depends_on:
       - game-db
-      - redis-replica-1
-      - redis-replica-2
-      - redis-replica-3
+      - redis-leader-1
+      - redis-leader-2
+      - redis-leader-3
     env_file:
       - ./game-store-service/.env  
     environment:
-      - REDIS_HOST=redis-replica-3    
+      - REDIS_HOST=redis-leader-3    
+      - REDIS_PORT=6379
     ports:
       - "5003:5001" 
 
@@ -100,41 +102,68 @@ services:
     command: "agent -dev -client=0.0.0.0"
 
   # Redis
-  redis-replica-1:
+  redis-leader-1:
     image: redis:latest
-    container_name: game-store-redis-replica-1
+    container_name: game-store-redis-leader-1
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - 6379:6379
     volumes:
       - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
 
-  redis-replica-2:
+  redis-leader-2:
     image: redis:latest
-    container_name: game-store-redis-replica-2
+    container_name: game-store-redis-leader-2
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - 6380:6379
     volumes:
       - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
 
-  redis-replica-3:
+  redis-leader-3:
     image: redis:latest
-    container_name: game-store-redis-replica-3
+    container_name: game-store-redis-leader-3
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - 6381:6379
     volumes:
       - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
 
+  redis-follower-1:
+    image: redis:latest
+    container_name: game-store-redis-follower-1
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - 6382:6379
+    volumes:
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+
+  redis-follower-2:
+    image: redis:latest
+    container_name: game-store-redis-follower-2
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - 6383:6379
+    volumes:
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+
+  redis-follower-3:
+    image: redis:latest
+    container_name: game-store-redis-follower-3
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - 6384:6379
+    volumes:
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+
   redis-cluster:
     image: redis:latest
     restart: no
-    command: ["/bin/sh", "-c", "redis-cli --cluster create game-store-redis-replica-1:6379 game-store-redis-replica-2:6379 game-store-redis-replica-3:6379 --cluster-yes"]
+    command: ["/bin/sh", "-c", "redis-cli --cluster create game-store-redis-leader-1:6379 game-store-redis-leader-2:6379 game-store-redis-leader-3:6379 game-store-redis-follower-1:6379 game-store-redis-follower-2:6379 game-store-redis-follower-3:6379 --cluster-replicas 1 --cluster-yes"]
     depends_on:
-      - redis-replica-1
-      - redis-replica-2
-      - redis-replica-3      
+      - redis-leader-1
+      - redis-leader-2
+      - redis-leader-3    
 
   # ELK stack services
   elasticsearch:
